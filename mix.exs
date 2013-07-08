@@ -2,9 +2,10 @@ defmodule ArtifactElixir.Mixfile do
   use Mix.Project
 
   def project do
-    [ app: :artifact_elixir,
+    [ app: :artifact,
       version: "0.0.1",
       elixir: "~> 0.9.4-dev",
+      compile_path: "ebin",
       deps: deps ]
   end
 
