@@ -1,0 +1,2 @@
+defmodule ArtifactElixir do
+end
