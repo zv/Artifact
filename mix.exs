@@ -9,7 +9,6 @@ defmodule ArtifactElixir.Mixfile do
       deps: deps ]
   end
 
-  # Configuration for the OTP application
   def application do
     []
   end
