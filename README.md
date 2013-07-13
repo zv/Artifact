@@ -1,3 +1,0 @@
-# ArtifactElixir
-
-** TODO: Add description **

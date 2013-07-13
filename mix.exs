@@ -1,4 +1,4 @@
-defmodule ArtifactElixir.Mixfile do
+defmodule Artifact.Mixfile do
   use Mix.Project
 
   def project do

@@ -1,6 +1,6 @@
 Code.require_file "test_helper.exs", __DIR__
 
-defmodule ArtifactElixirTest do
+defmodule ArtifactTest do
   use ExUnit.Case
 
   test "the truth" do
