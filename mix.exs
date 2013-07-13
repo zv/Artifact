@@ -13,9 +13,10 @@ defmodule Artifact.Mixfile do
     []
   end
 
-  # Returns the list of dependencies in the format:
-  # { :foobar, "0.1", git: "https://github.com/elixir-lang/foobar.git" }
   defp deps do
-    []
+    [ 
+      # Exlager is a wrapper of the classic logging library from Basho
+      { :exlager, ref: "f8dd0715d7668290d7d02a4517acfee4e8be885c", github: "khia/exlager" } 
+    ]
   end
 end
