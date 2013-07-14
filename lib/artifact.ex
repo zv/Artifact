@@ -9,19 +9,31 @@ defmodule Artifact do
     Returns Artifact's current configuration 
   """
   def config([key | rest], acc) do
-    case System.get_env(:artifact, key) do 
+    case :application.get_env(:artifact, key) do 
       {:ok, value } -> config(rest, [ {key, value} | acc ])
       :undefined     -> config(rest, acc)
     end
   end
 
-  # Application behaviour callbacks.
-  def start(_type, _args) do
-    Application.start(:artifact)
+  def start(_type, _args) do 
+    args = config(artifact: [
+            :n,
+            :r,
+            :w,
+            :store,
+            :buckets,
+            :tables,
+            :vnodes,
+            :rpc_processes_ceiling,
+            :rpc_port,
+            :max_connections,
+            :interfaces
+      ], [])
+    :artifact_sup.start_link(args)
   end
 
-  def stop(_state) do
-    :ok
+  def start do
+    :application.start(:artifact) 
   end
 
 end
