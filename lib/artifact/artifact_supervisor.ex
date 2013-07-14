@@ -1,7 +1,6 @@
-defmodule Artifact.Sup do
+defmodule Artifact.Supervisor do
   use Supervisor.Behaviour
 
-  # The __MODULE__ option is analagous to ?MODULE in erlang
   defmacro server do
     __MODULE__
   end
@@ -13,8 +12,9 @@ defmodule Artifact.Sup do
   end
 
   def init(user_options) do
-    config = worker(Artifact.Config, [user_options])
-    tree = [config]
+    tree = [
+      worker(Artifact.Config, [user_options])
+    ]
     supervise(tree, strategy: :one_for_one) 
   end
 end
