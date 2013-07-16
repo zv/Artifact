@@ -14,6 +14,34 @@ defmodule Artifact do
 
   """ 
   
+  use Application.Behaviour
+
+
+  defrecord Data, 
+    key: nil, bucket: nil, flags: nil, vector_clocks: nil, checksum: nil, 
+    value: nil, last_modified: { { 1970, 1, 1 }, { 0, 0, 0 } } do
+      @moduledoc """
+      The data record is responsible for storing all the information describing
+      a value (and it's associated key), it contains:
+
+      * `:key` - The key used to find the data;
+      * `:bucket` - The bucket (or buckets) where this data presently resides as
+          the last synchronization with another host with new information.
+      * `:flags` - An integer containing the flags of this account.
+         filesystem path. This information may be used later by the finder
+         to retrieve the template source
+      * `:vector_clocks` - The vector clock chain for to reconcile future changes.
+      * `:checksum` - The checksum of the data.
+      * `:last_modified` - Last modification time.
+      """
+    end
+
+  defrecord TCPOptions, 
+    listen: [{:active, false}, :binary, {:packet, :line}, {:reuseaddr, true}],
+    port: 11211, max_processes: 8, max_restarts: 3, time: 60, shutdown: 2000,
+    accept_timeout: :infinity, accept_error_sleep_time: 3000, recv_length: 0,
+    recv_timeout: :infinity 
+
   def config([], acc) do
     acc 
   end
