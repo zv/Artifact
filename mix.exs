@@ -4,8 +4,7 @@ defmodule Artifact.Mixfile do
   def project do
     [ app: :artifact,
       version: "0.0.1",
-      elixir: "~> 0.9.4-dev",
-      compile_path: "ebin",
+      elixir: "~> 0.10.0",
       deps: deps ]
   end
 
