@@ -42,17 +42,19 @@ defmodule Artifact do
     accept_timeout: :infinity, accept_error_sleep_time: 3000, recv_length: 0,
     recv_timeout: :infinity 
 
-  def config([], acc) do
+
+  defmacro server do
+    __MODULE__
+  end
+
+  def config(keys, acc) when length(keys) == 0 do
     acc 
   end
 
-  @doc """
-    Returns Artifact's current configuration 
-  """
-  def config([key | rest], acc) do
+  def config([key | tail], acc) do
     case :application.get_env(:artifact, key) do 
-      {:ok, value } -> config(rest, [ {key, value} | acc ])
-      :undefined     -> config(rest, acc)
+      {:ok, value } -> config(tail, [ {key, value} | acc ])
+      :undefined     -> config(tail, acc)
     end
   end
 
