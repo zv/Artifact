@@ -13,11 +13,11 @@ defmodule Artifact.Config do
     # Load our keys
     Enum.each(args, fn({k, v}) ->
       :ets.insert :config, {k, v}  
-      end
+    end
     )
 
     {:ok, hostname} = case Keyword.get(args, :hostname) do 
-      nil  -> :inet.gethostname()
+      nil      -> :inet.gethostname
       hostname -> {:ok, hostname}
     end
     {:ok, address} = :inet.getaddr(hostname, :inet) 
@@ -28,5 +28,75 @@ defmodule Artifact.Config do
     :ets.insert :config, {:buckets, Keyword.get(:buckets, args)} 
 
     {:ok, []}
+  end
+
+  def terminate(_reason, _state) do 
+    :ets.delete(:config)
+  end
+
+  def do_get(key) do 
+    case :ets.lookup(:config, key) do
+      [{^key,value} | _ ] -> value
+      _ -> nil
+    end
+  end
+
+  def do_get([], list_of_values) do
+    :lists.reverse(list_of_values)
+  end
+
+  def do_get([key|rest], list_of_values) do
+    do_get(rest, [do_get(key)|list_of_values])
+  end
+
+  def get(list_of_keys, state) when is_list(list_of_keys) do
+    {:reply, do_get(list_of_keys, []), state}
+  end
+
+  def get(key, state) do
+    {:reply, do_get(key), state}
+  end
+
+
+  def node_info(state) do
+    [local_node, vnodes] = do_get([:node, :vnodes], [])
+    info = [{:vnodes, vnodes}]
+    {:reply, {:node_info, local_node, info}, state}
+  end
+
+
+  def handle_call(:stop, _from, state) do
+    {:stop, :normal, :stopped, state}
+  end
+  def handle_call({:get, key}, _from, state) do
+    Config.get(key, state)
+  end
+
+  def handle_call(:node_info, _from, state) do
+    Config.node_info(state)
+  end
+
+  def handle_cast(_msg, state) do
+    {:noreply, state}
+  end
+
+  def handle_info(_info, state) do
+    {:noreply, state}
+  end
+
+  def code_change(_old_vsn, state, _extra) do
+    {:ok, state}
+  end
+
+  def stop do
+    :gen_server.call(__MODULE__, :stop)
+  end
+
+  def get(key) do
+    :gen_server.call(__MODULE__, {:get, key})
+  end
+
+  def node_info do
+    :gen_server.call(__MODULE__, :node_info)
   end
 end
