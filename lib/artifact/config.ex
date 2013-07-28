@@ -50,6 +50,18 @@ defmodule Artifact.Config do
     do_get(rest, [do_get(key)|list_of_values])
   end
 
+  def stop do
+    :gen_server.call(__MODULE__, :stop)
+  end
+
+  def get(key) do
+    :gen_server.call(__MODULE__, {:get, key})
+  end
+
+  def node_info do
+    :gen_server.call(__MODULE__, :node_info)
+  end
+
   def get(list_of_keys, state) when is_list(list_of_keys) do
     {:reply, do_get(list_of_keys, []), state}
   end
@@ -65,6 +77,7 @@ defmodule Artifact.Config do
     {:reply, {:node_info, local_node, info}, state}
   end
 
+  # Behaviour Callbacks 
 
   def handle_call(:stop, _from, state) do
     {:stop, :normal, :stopped, state}
@@ -79,26 +92,15 @@ defmodule Artifact.Config do
   end
 
   def handle_cast(_msg, state) do
-    {:noreply, state}
+    super(_msg, state)
   end
 
-  def handle_info(_info, state) do
-    {:noreply, state}
+  def handle_info(_msg, state) do
+    super(_msg, state)
   end
 
-  def code_change(_old_vsn, state, _extra) do
-    {:ok, state}
+  def code_change(_old, state, _extra) do
+    super(_old, state, _extra)
   end
 
-  def stop do
-    :gen_server.call(__MODULE__, :stop)
-  end
-
-  def get(key) do
-    :gen_server.call(__MODULE__, {:get, key})
-  end
-
-  def node_info do
-    :gen_server.call(__MODULE__, :node_info)
-  end
 end

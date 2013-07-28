@@ -32,7 +32,7 @@ defmodule Artifact do
     args = config([
             :rpc, :interfaces, :buckets, :vnodes, :tables, :store,
             :participants, :read_participants, :write_participants,
-            :hostname, :logging
+            :hostname
       ], [])
     :artifact_supervisor.start_link(args)
   end

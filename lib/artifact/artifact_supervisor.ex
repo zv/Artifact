@@ -13,7 +13,8 @@ defmodule Artifact.Supervisor do
 
   def init(user_options) do
     tree = [
-      worker(Artifact.Config, [user_options])
+      worker(Artifact.Config, [user_options]),
+      worker(Artifact.Logging, [user_options])
     ]
     supervise(tree, strategy: :one_for_one) 
   end
