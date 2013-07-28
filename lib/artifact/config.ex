@@ -20,8 +20,9 @@ defmodule Artifact.Config do
       nil      -> :inet.gethostname
       hostname -> {:ok, hostname}
     end
+
     {:ok, address} = :inet.getaddr(hostname, :inet) 
-    port = Keyword.get(:rpc_port, args)
+    port = Keyword.get(args, :rpc) |> Keyword.get(:port)
     :ets.insert :config, {:node, {address, port}} 
 
     # Total buckets given by 2 ^ (log(buckets) / log(2))
@@ -68,6 +69,7 @@ defmodule Artifact.Config do
   def handle_call(:stop, _from, state) do
     {:stop, :normal, :stopped, state}
   end
+
   def handle_call({:get, key}, _from, state) do
     Config.get(key, state)
   end

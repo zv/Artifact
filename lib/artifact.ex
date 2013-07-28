@@ -54,17 +54,15 @@ defmodule Artifact do
   def config([key | tail], acc) do
     case :application.get_env(:artifact, key) do 
       {:ok, value } -> config(tail, [ {key, value} | acc ])
-      :undefined     -> config(tail, acc)
+      :undefined    -> config(tail, acc)
     end
   end
 
   def start(_type, _args) do 
     args = config([
-            :n, :r, :w,
-            :store,
-            :buckets, :tables, :vnodes,
-            :rpc_processes_ceiling, :rpc_port,
-            :max_connections, :interfaces
+            :rpc, :interfaces, :buckets, :vnodes, :tables, :store,
+            :participants, :read_participants, :write_participants,
+            :hostname, :logging
       ], [])
     :artifact_supervisor.start_link(args)
   end
