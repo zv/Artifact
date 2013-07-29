@@ -8,5 +8,5 @@ artifact:
 clean:
 	mix clean
 
-test: 
-	echo "NO TESTS YET, TRY AGAIN LATER"
+test: 	
+	mix test
