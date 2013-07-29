@@ -2,17 +2,17 @@ defmodule Artifact.Config do
   use GenServer.Behaviour
 
   def start_link(args) do
-    :gen_server.start_link(Artifact.Config, __MODULE__, args)
+    :gen_server.start_link({:local, __MODULE__}, __MODULE__, args, _options = [])
   end
 
   def init(args) do 
     # Elixir has not ported a library wrapping OTP ETS, so we use the native
     # interface here
-    :ets.new :config, [:set, :private, :named_table]
+    :ets.new(:config, [:set, :private, :named_table])
 
     # Load our keys
-    Enum.each(args, fn({k, v}) ->
-      :ets.insert :config, {k, v}  
+    Enum.each(args, fn({key, value}) ->
+      :ets.insert(:config, {key, value}) 
     end
     )
 
@@ -26,7 +26,7 @@ defmodule Artifact.Config do
     :ets.insert :config, {:node, {address, port}} 
 
     # Total buckets given by 2 ^ (log(buckets) / log(2))
-    :ets.insert :config, {:buckets, Keyword.get(:buckets, args)} 
+    :ets.insert :config, {:buckets, Keyword.get(args, :buckets)} 
 
     {:ok, []}
   end
@@ -58,18 +58,17 @@ defmodule Artifact.Config do
     :gen_server.call(__MODULE__, {:get, key})
   end
 
-  def node_info do
-    :gen_server.call(__MODULE__, :node_info)
-  end
-
-  def get(list_of_keys, state) when is_list(list_of_keys) do
-    {:reply, do_get(list_of_keys, []), state}
+  def get(keylist, state) when is_list(keylist) do
+    {:reply, do_get(keylist, []), state}
   end
 
   def get(key, state) do
     {:reply, do_get(key), state}
   end
 
+  def node_info do
+    :gen_server.call(__MODULE__, :node_info)
+  end
 
   def node_info(state) do
     [local_node, vnodes] = do_get([:node, :vnodes], [])
@@ -84,11 +83,11 @@ defmodule Artifact.Config do
   end
 
   def handle_call({:get, key}, _from, state) do
-    Config.get(key, state)
+    get(key, state)
   end
 
   def handle_call(:node_info, _from, state) do
-    Config.node_info(state)
+    node_info(state)
   end
 
   def handle_cast(_msg, state) do
