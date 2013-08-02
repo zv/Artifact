@@ -23,14 +23,35 @@ defmodule Artifact.Hash do
   * http://dl.acm.org/citation.cfm?id=258660 
   """
   use GenServer.Behaviour
+
+  # Resolve and define our hash function.  
+  case System.get_env(:hash_function) do
+    :md5 ->
+      def hash(key) do
+        <<output :: size(32), _ :: binary>> = :erlang.md5(key)
+        output 
+      end
+    _ -> false
+  end
+
   def start_link do
     :gen_server.start_link({:local, __MODULE__}, __MODULE__, [], _options = [])
   end
 
   def init(_args) do
+
     :ets.new :buckets        , [:set         , :private , :named_table]
     :ets.new :node_manifest  , [:set         , :private , :named_table]
     :ets.new :vnode_manifest , [:ordered_set , :private , :named_table]
+
     { :ok, [] }
+  end
+
+  def terminate(_reason, _state) do
+    :ets.delete(:node_manifest)
+    :ets.delete(:vnode_manifest)
+    :ets.delete(:buckets)
+
+    :ok
   end
 end
