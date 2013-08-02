@@ -22,7 +22,7 @@ defmodule Artifact do
   end
 
   def config([key | tail], acc) do
-    case :application.get_env(:artifact, key) do 
+    case System.get_env(:artifact, key) do 
       {:ok, value } -> config(tail, [ {key, value} | acc ])
       :undefined    -> config(tail, acc)
     end
@@ -38,7 +38,7 @@ defmodule Artifact do
   end
 
   def start do
-    :application.start(:artifact) 
+    System.start(:artifact) 
   end
 
 end
