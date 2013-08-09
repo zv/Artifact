@@ -37,8 +37,6 @@ defmodule Artifact do
     :artifact_supervisor.start_link(args)
   end
 
-  def start do
-    System.start(:artifact) 
-  end
+  def start, do: System.start(:artifact)
 
 end

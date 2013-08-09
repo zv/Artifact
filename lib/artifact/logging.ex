@@ -65,9 +65,7 @@ defmodule Artifact.Logging do
     end
   end
 
-  def start_link do
-    :gen_server.start_link(__MODULE__, [], [])
-  end
+  def start_link, do: :gen_server.start_link(__MODULE__, [], [])
 
   def handle_call(:stop, _from, state) do
     # terminate any callee using a call/multicall on us
@@ -79,13 +77,9 @@ defmodule Artifact.Logging do
     {:noreply, state}
   end
 
-  def stop do
-    :gen_server.call(__MODULE__, stop)
-  end
+  def stop, do: :gen_server.call(__MODULE__, stop)
 
-  def handle_info(info, state) do
-    super(info, state)
-  end
+  def handle_info(info, state), do: super(info, state)
 
   def code_change(old_version, state, extra) do
     super(old_version, state, extra)
