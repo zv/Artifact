@@ -15,7 +15,7 @@ defmodule Artifact.Mixfile do
   defp deps do
     [ 
       # Exlager is a wrapper of the classic logging library from Basho
-      { :exlager, ref: "f8dd0715d7668290d7d02a4517acfee4e8be885c", github: "khia/exlager" } 
+      { :exlager, ref: "b50e47abe39b2cb28fa431f0af4390c2324bf229", github: "khia/exlager"}
     ]
   end
 end
