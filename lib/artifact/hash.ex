@@ -1,4 +1,6 @@
 defmodule Artifact.Hash do
+  @compile {:nowarn_unused_function, [derive_node_manifest: 4]}
+
   @docmodule """
   This module provides functions for creating new nodes and storing the
   keyspace assigned to those nodes into the underlying storage backend.
@@ -25,9 +27,8 @@ defmodule Artifact.Hash do
   use GenServer.Behaviour
 
   # Resolve and define our hash function.  
-  case System.get_env(:hash_function) do
-    :md5 ->
-      def hash(key) do
+  case :application.get_env(:hash_function) do
+    :md5 -> def hash(key) do
         <<output :: size(32), _ :: binary>> = :erlang.md5(key)
         output 
       end
@@ -54,4 +55,29 @@ defmodule Artifact.Hash do
 
     :ok
   end
+
+  """
+  Searches the nodes by buckets to produce a list of nodes given
+  participants and the hashed key.
+  """
+  defp derive_node_manifest(_key_hash, _n, i, nodes) when i == 0 do
+    {:nodes, Enum.reverse(nodes)}
+  end
+  defp derive_node_manifest(key_hash, n, i, nodes) do
+    node_hash = case :ets.next(:vnode_manifest, key_hash) do
+      "$end_of_table" -> :ets.first(:vnode_manifest)
+      other           -> other
+    end
+    [{_k,node} | _] = :ets.lookup(:vnode_manifest, node_hash)
+    new_nodes = case Enum.member?(nodes, node) do
+      true  -> nodes
+      false -> [ node | nodes ]
+    end
+
+    case length(new_nodes) do
+      ^n  -> {:nodes, Enum.reverse(new_nodes)}
+      _   -> derive_node_manifest(key_hash, n, i-1, new_nodes)
+    end
+  end
+
 end
