@@ -25,6 +25,8 @@ defmodule Artifact.Hash do
   * http://dl.acm.org/citation.cfm?id=258660 
   """
   use GenServer.Behaviour
+  # Defines the prefix length of our hash
+  defmacrop hash_length, do: 32
 
   # Resolve and define our hash function.  
   case :application.get_env(:hash_function) do
@@ -35,10 +37,12 @@ defmodule Artifact.Hash do
     _ -> false
   end
 
+  @doc false
   def start_link do
     :gen_server.start_link({:local, __MODULE__}, __MODULE__, [], _options = [])
   end
 
+  @doc false
   def init(_args) do
 
     :ets.new :buckets        , [:set         , :private , :named_table]
@@ -48,6 +52,7 @@ defmodule Artifact.Hash do
     { :ok, [] }
   end
 
+  @doc false
   def terminate(_reason, _state) do
     :ets.delete(:node_manifest)
     :ets.delete(:vnode_manifest)
@@ -78,6 +83,11 @@ defmodule Artifact.Hash do
       ^n  -> {:nodes, Enum.reverse(new_nodes)}
       _   -> derive_node_manifest(key_hash, n, i-1, new_nodes)
     end
+  end
+
+  # Identifies the range of buckets
+  def ring_circumference(bucket_count) do
+    trunc(:math.pow(2, hash_length) / bucket_count) 
   end
 
 end
