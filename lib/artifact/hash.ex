@@ -90,4 +90,16 @@ defmodule Artifact.Hash do
     trunc(:math.pow(2, hash_length) / bucket_count) 
   end
 
+
+  def remove_nodes([]) do
+    :ok
+  end
+
+  # def remove_nodes([head|tail]) do
+  #   case :ets.lookup(node_list, node) do
+  #     [{:node, :info} | _ ] -> 
+  #       :ets.delete(:node_list, Node),
+  #       vnode_count = Keyword.
+  #   end
+   end
 end
