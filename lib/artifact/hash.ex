@@ -1,6 +1,6 @@
 defmodule Artifact.Hash do
   @compile {:nowarn_unused_function, [derive_node_manifest: 4]}
-
+  @on_load :register_hash_function
   @docmodule """
   This module provides functions for creating new nodes and storing the
   keyspace assigned to those nodes into the underlying storage backend.
@@ -28,14 +28,26 @@ defmodule Artifact.Hash do
   # Defines the prefix length of our hash
   defmacrop hash_length, do: 32
 
-  # Resolve and define our hash function.  
-  case :application.get_env(:hash_function) do
-    :md5 -> def hash(key) do
-        <<output :: size(32), _ :: binary>> = :erlang.md5(key)
-        output 
-      end
-    _ -> false
+  defmacrop register_hash_function do
+    case :application.get_env(:hash_function) do
+      :md5 -> 
+          def hash(key) do
+            <<output :: size(32), _ :: binary>> = :erlang.md5(key)
+            output 
+          end
+
+          def hash({{n1,n2,n3,n4}, port}, vnode) do 
+            << hashed_key :: [size(hash_length), integer] , _rest :: binary >> = 
+                :erlang.md5(<< n1,n2,n3,n4, port :: 16, vnode:: 16 >>)
+              hashed_key
+          end
+
+          :ok # We have to return ok in response to @on_load
+
+      _ -> nil 
+    end
   end
+
 
   @doc false
   def start_link do
