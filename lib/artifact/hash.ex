@@ -103,15 +103,19 @@ defmodule Artifact.Hash do
   end
 
 
-  def remove_nodes([]) do
-    :ok
+  def remove_nodes([]), do: :ok
+
+  def remove_nodes([head | tail]) do
+    case :ets.lookup(:node_manifest, node) do 
+      [{node, info}|_] ->
+          :ets.delete(:node_manifest, node)
+          vnode_count = Keyword.get(:vnodes, info)
+          Enum.each 1..vnode_count, fn(vnode) -> 
+            :ets.delete(:vnodes, hash(node, vnode)) 
+          end
+      [] -> :ok
+    end
+    remove_nodes(tail)
   end
 
-  # def remove_nodes([head|tail]) do
-  #   case :ets.lookup(node_list, node) do
-  #     [{:node, :info} | _ ] -> 
-  #       :ets.delete(:node_list, Node),
-  #       vnode_count = Keyword.
-  #   end
-   end
 end
