@@ -99,7 +99,28 @@ defmodule Artifact.Hash do
 
   # Identifies the range of buckets
   def ring_circumference(bucket_count) do
-    trunc(:math.pow(2, hash_length) / bucket_count) 
+    trunc(:math.pow(2, hash_length) / bucket_count)
+  end
+
+  @doc """
+    Fetches & writes another virtual node entry into the global vnode manifest.
+    No locks are acquired so each manifest is node distinct .
+  """
+  def add_nodes(nodes) when nodes == [] do
+    :ok
+  end
+  def add_nodes([{node, info}|tail]) do
+    case ets:lookup(:node_list, node) do
+      ^[ {node, _info} | _ ] -> :ok
+      [] ->
+        ets:insert(:node_list, {node, info}),
+          vnode_count = Keyword.get(:vnodes, info)
+          Enum.each(1..vnode_count, fn(vnode) ->
+            key = hash(node, vnode)
+            :ets.insert(:vnode_manifest, {key, node})
+          end
+    end
+    add_nodes(tail)
   end
 
 
