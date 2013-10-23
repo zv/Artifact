@@ -1,41 +1,41 @@
-defmodule Artifact.Config do
+defmodule Config do
   use GenServer.Behaviour
 
   def start_link(args) do
     :gen_server.start_link({:local, __MODULE__}, __MODULE__, args, _options = [])
   end
 
-  def init(args) do 
+  def init(args) do
     # Elixir has not ported a library wrapping OTP ETS, so we use the native
     # interface here
     :ets.new(:config, [:set, :private, :named_table])
 
     # Load our keys
     Enum.each(args, fn({key, value}) ->
-      :ets.insert(:config, {key, value}) 
+      :ets.insert(:config, {key, value})
     end
     )
 
-    {:ok, hostname} = case Keyword.get(args, :hostname) do 
+    {:ok, hostname} = case Keyword.get(args, :hostname) do
       nil      -> :inet.gethostname
       hostname -> {:ok, hostname}
     end
 
-    {:ok, address} = :inet.getaddr(hostname, :inet) 
+    {:ok, address} = :inet.getaddr(hostname, :inet)
     port = Keyword.get(args, :rpc) |> Keyword.get(:port)
-    :ets.insert :config, {:node, {address, port}} 
+    :ets.insert :config, {:node, {address, port}}
 
     # Total buckets given by 2 ^ (log(buckets) / log(2))
-    :ets.insert :config, {:buckets, Keyword.get(args, :buckets)} 
+    :ets.insert :config, {:buckets, Keyword.get(args, :buckets)}
 
     {:ok, []}
   end
 
-  def terminate(_reason, _state) do 
+  def terminate(_reason, _state) do
     :ets.delete(:config)
   end
 
-  def do_get(key) do 
+  def do_get(key) do
     case :ets.lookup(:config, key) do
       [{^key,value} | _ ] -> value
       _ -> nil
@@ -76,7 +76,7 @@ defmodule Artifact.Config do
     {:reply, {:node_info, local_node, info}, state}
   end
 
-  # Behaviour Callbacks 
+  # Behaviour Callbacks
 
   def handle_call(:stop, _from, state) do
     {:stop, :normal, :stopped, state}

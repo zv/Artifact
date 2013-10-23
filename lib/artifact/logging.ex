@@ -1,4 +1,4 @@
-defmodule Artifact.Logging do
+defmodule Logging do
   @moduledoc """
   This module provides functions to log errors with the use of Basho's
   excellent `lager` module, and to support setting up interfaces to emit
