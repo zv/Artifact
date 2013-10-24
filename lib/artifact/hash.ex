@@ -71,9 +71,9 @@ defmodule Artifact.Hash do
     :ok
   end
 
-  """
-  Searches the nodes by buckets to produce a list of nodes given
-  participants and the hashed key.
+  @doc """
+    Searches the nodes to produce a list of nodes given participants and the
+    hashed key.
   """
   defp derive_node_manifest(_key_hash, _n, i, nodes) when i == 0 do
     {:nodes, Enum.reverse(nodes)}
@@ -96,7 +96,9 @@ defmodule Artifact.Hash do
     end
   end
 
-  # Identifies the range of buckets
+  @doc """
+    Calculates the hash ring output space
+  """
   def ring_circumference(bucket_count) do
     trunc(:math.pow(2, @hash_length) / bucket_count)
   end
@@ -110,7 +112,7 @@ defmodule Artifact.Hash do
   end
   def add_nodes([{node, info}|tail]) do
     case :ets.lookup(:node_list, node) do
-      [ {node, _info} | _ ] -> :ok
+      [ {^node, _info} | _ ] -> :ok
       [] ->
         :ets.insert(:node_list, {node, info})
         vnode_count = Keyword.get(:vnodes, info)
@@ -121,12 +123,59 @@ defmodule Artifact.Hash do
     add_nodes(tail)
   end
 
+  """
+  update_buckets is a helper function to rearrange the buckets when a new node
+  is added.
+  """
+  defp update_buckets(-1, _node, _range, _n, _max_search, replaced_buckets) do
+    {:replaced_buckets, replaced_buckets}
+  end
+
+  defp update_buckets(bucket, node, circumference, n, max_search, replaced_buckets) do
+    {:nodes, new_nodes} =
+      derive_node_manifest(bucket * circumference, n, max_search, [])
+
+    case :ets.lookup(:buckets, bucket) do
+      [ { ^bucket, ^new_nodes } ] -> update_buckets(bucket - 1, node, circumference,
+                                                   n, max_search, replaced_buckets )
+      old_bucket ->
+        # Update our buckets w/ the new nodes we just derived.
+        :ets.insert(:buckets, {bucket, new_nodes})
+        new_replica = Enum.find_index(node, new_nodes)
+        old_replica = case old_bucket do
+          [{bucket, old_nodes}] -> Enum.find_index(node, old_nodes)
+          []                    -> :undefined
+        end
+        replaced_buckets2 = case {new_replica, old_replica} do
+          { replica, replica } -> replaced_buckets
+          _                    -> [ { bucket, new_replica, old_replica } | replaced_buckets ]
+        end
+        update_buckets(bucket - 1, node, circumference,
+                       n, max_search, replaced_buckets2)
+    end
+  end
+
+  defp update_buckets do
+    [node, n, number_of_buckets] =
+      :artifact_config.get [:node, :n, :number_of_buckets]
+
+    circumference    = ring_circumference(number_of_buckets)
+    number_of_nodes  = Keyword.get(:size, :ets.info :node_list )
+
+    max_search      = case number_of_nodes do
+      # Don't search other nodes to fill a bucket when NumberOfNodes is
+      # 1, since they are never found.
+      1    -> 1
+      _    -> Keyword.get(:size, :ets.info :virtual_node_list)
+    end
+    update_buckets(number_of_buckets - 1, node, circumference, n, max_search, [])
+  end
 
   def remove_nodes([]), do: :ok
 
-  def remove_nodes([head | tail]) do
+  def remove_nodes([node | rest]) do
     case :ets.lookup(:node_manifest, node) do
-      [{node, info}|_] ->
+      [ { node, info } | _ ] ->
           :ets.delete(:node_manifest, node)
           vnode_count = Keyword.get(:vnodes, info)
           Enum.each 1..vnode_count, fn(vnode) ->
@@ -134,6 +183,6 @@ defmodule Artifact.Hash do
           end
       [] -> :ok
     end
-    remove_nodes(tail)
+    remove_nodes(rest)
   end
 end
