@@ -31,17 +31,19 @@ defmodule Artifact.Hash do
     cryptographically secure hash functions are more readily suited for for
     distributed hash storage in an insecure environment.
   """
-  hash_function = :application.get_env(:artifact, :hash_function)
-  @crypto fn hash ->
-    apply(Keyword.get(hash_function, :module), Keyword.get(hash_function, :fun), hash)
+  @hash_function :application.get_env(:artifact, :hash_function)
+  @hash_length 32
+  @doc
+  def crypto(hash) do
+    apply(Keyword.get(@hash_function, :module), Keyword.get(@hash_function, :fun), [hash])
   end
   def hash(key) do
-    <<output :: size(32), _ :: binary>> = __MODULE__.crypto.(key)
+    <<output :: @hash_length, _ :: binary>> = crypto(key)
     output
   end
   def hash({{n1,n2,n3,n4}, port}, vnode) do
-    << hashed_key :: [size(hash_length), integer] , _rest :: binary >> =
-        __MODULE__.crypto(<< n1,n2,n3,n4, port :: 16, vnode:: 16 >>)
+    <<hashed_key :: @hash_length, _rest :: binary>> =
+        crypto(<< n1,n2,n3,n4, port :: 16, vnode:: 16 >>)
       hashed_key
   end
 
@@ -96,7 +98,7 @@ defmodule Artifact.Hash do
 
   # Identifies the range of buckets
   def ring_circumference(bucket_count) do
-    trunc(:math.pow(2, hash_length) / bucket_count)
+    trunc(:math.pow(2, @hash_length) / bucket_count)
   end
 
   @doc """
@@ -107,15 +109,14 @@ defmodule Artifact.Hash do
     :ok
   end
   def add_nodes([{node, info}|tail]) do
-    case ets:lookup(:node_list, node) do
-      ^[ {node, _info} | _ ] -> :ok
+    case :ets.lookup(:node_list, node) do
+      [ {node, _info} | _ ] -> :ok
       [] ->
-        ets:insert(:node_list, {node, info}),
-          vnode_count = Keyword.get(:vnodes, info)
-          Enum.each(1..vnode_count, fn(vnode) ->
-            key = hash(node, vnode)
-            :ets.insert(:vnode_manifest, {key, node})
-          end
+        :ets.insert(:node_list, {node, info})
+        vnode_count = Keyword.get(:vnodes, info)
+        Enum.each(1..vnode_count,
+          &:ets.insert(:vnode_manifest, {hash(node, &1), node})
+        )
     end
     add_nodes(tail)
   end
