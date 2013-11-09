@@ -1,5 +1,5 @@
 defmodule Artifact.Hash do
-  @compile {:nowarn_unused_function, [derive_node_manifest: 4]}
+  @compile {:nowarn_unused_function, [bucket_members: 4]}
   @docmodule """
   This module provides functions for creating new nodes and storing the
   keyspace assigned to those nodes into the underlying storage backend.
@@ -72,14 +72,13 @@ defmodule Artifact.Hash do
   end
 
   """
-    Searches the nodes to derive a manifest containing all of the nodes
-    with a particular key.
+  List nodes whose mapped keyspace falls on this key_hash
   """
-  def derive_node_manifest(_key_hash, _n, i, nodes) when i == 0 do
+  def bucket_members(_key_hash, _n, i, nodes) when i == 0 do
     {:nodes, Enum.reverse(nodes)}
   end
 
-  def derive_node_manifest(key_hash, n, i, nodes) do
+  def bucket_members(key_hash, n, i, nodes) do
     node_hash = case :ets.next(:vnode_manifest, key_hash) do
       "$end_of_table" -> :ets.first(:vnode_manifest)
       other           -> other
@@ -92,7 +91,7 @@ defmodule Artifact.Hash do
 
     case length(new_nodes) do
       ^n  -> {:nodes, Enum.reverse(new_nodes)}
-      _   -> derive_node_manifest(key_hash, n, i-1, new_nodes)
+      _   -> bucket_members(key_hash, n, i-1, new_nodes)
     end
   end
 
