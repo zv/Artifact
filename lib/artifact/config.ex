@@ -42,12 +42,12 @@ defmodule Artifact.Config do
     :gen_server.call(__MODULE__, {:get, key})
   end
 
-  def get(key, state) do
-    {:reply, do_get(key), state}
-  end
-
   def get(keys, state) when is_list(keys) do
     {:reply, do_get(keys, []), state}
+  end
+
+  def get(key, state) do
+    {:reply, do_get(key), state}
   end
 
   defp do_get(key) do
