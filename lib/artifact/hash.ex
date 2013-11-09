@@ -188,4 +188,22 @@ defmodule Artifact.Hash do
     end
     remove_nodes(rest)
   end
+
+  defp bucket_index(bucket, count) when is_integer(bucket) do
+    rem(bucket, count)
+  end
+
+  defp bucket_index(key, count) do
+    hash(key) / ring_circumference(count)
+  end
+
+  @doc """
+  Find a bucket by either a constituent key or the bucket id
+  """
+  @spec locate_bucket(integer(), atom()) :: integer()
+  @spec locate_bucket(binary(), atom())  :: integer()
+  def locate_bucket(query, state) do
+    count = Config.get(:buckets)
+    {:reply, {:bucket, bucket_index(query, count)}, state}
+  end
 end
