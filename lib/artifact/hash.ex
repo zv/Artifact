@@ -126,31 +126,35 @@ defmodule Artifact.Hash do
   update_buckets is a helper function to rearrange the buckets when a new node
   is added.
   """
-  defp update_buckets(-1, _node, _range, _n, _max_search, replaced_buckets) do
-    {:replaced_buckets, replaced_buckets}
+  defp update_buckets(-1, _node, _range, _n, _max_search, reorganized_buckets) do
+    {:reorganized_buckets, reorganized_buckets}
   end
 
-  defp update_buckets(bucket, node, circumference, n, max_search, replaced_buckets) do
+  defp update_buckets(bucket, node, circumference, n, max_search, reorganized_buckets) do
     {:nodes, new_nodes} =
-      derive_node_manifest(bucket * circumference, n, max_search, [])
+      bucket_members(bucket * circumference, n, max_search, [])
 
     case :ets.lookup(:buckets, bucket) do
+      # If we found a preexising bucket, we can safely skip this.
       [ { ^bucket, ^new_nodes } ] -> update_buckets(bucket - 1, node, circumference,
-                                                   n, max_search, replaced_buckets )
+                                                   n, max_search, reorganized_buckets )
+      # Otherwise we have to insert a new bucket
       old_bucket ->
-        # Update our buckets w/ the new nodes we just derived.
         :ets.insert(:buckets, {bucket, new_nodes})
         new_replica = Enum.find_index(node, new_nodes)
         old_replica = case old_bucket do
           [{bucket, old_nodes}] -> Enum.find_index(node, old_nodes)
           []                    -> :undefined
         end
-        replaced_buckets2 = case {new_replica, old_replica} do
-          { replica, replica } -> replaced_buckets
-          _                    -> [ { bucket, new_replica, old_replica } | replaced_buckets ]
+
+        reorganized_buckets_n = if new_replica == old_replica do
+          reorganized_buckets
+        else
+          [ { bucket, new_replica, old_replica } | reorganized_buckets ]
         end
+
         update_buckets(bucket - 1, node, circumference,
-                       n, max_search, replaced_buckets2)
+                       n, max_search, reorganized_buckets_n)
     end
   end
 
