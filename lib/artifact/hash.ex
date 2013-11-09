@@ -71,15 +71,15 @@ defmodule Artifact.Hash do
     :ok
   end
 
-  @doc """
-    Searches the nodes to produce a list of nodes given participants and the
-    hashed key.
   """
-  defp derive_node_manifest(_key_hash, _n, i, nodes) when i == 0 do
+    Searches the nodes to derive a manifest containing all of the nodes
+    with a particular key.
+  """
+  def derive_node_manifest(_key_hash, _n, i, nodes) when i == 0 do
     {:nodes, Enum.reverse(nodes)}
   end
 
-  defp derive_node_manifest(key_hash, n, i, nodes) do
+  def derive_node_manifest(key_hash, n, i, nodes) do
     node_hash = case :ets.next(:vnode_manifest, key_hash) do
       "$end_of_table" -> :ets.first(:vnode_manifest)
       other           -> other
