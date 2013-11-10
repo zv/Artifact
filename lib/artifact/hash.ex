@@ -200,10 +200,37 @@ defmodule Artifact.Hash do
   @doc """
   Find a bucket by either a constituent key or the bucket id
   """
-  @spec locate_bucket(integer(), atom()) :: integer()
-  @spec locate_bucket(binary(), atom())  :: integer()
+  @spec locate_bucket(integer(), atom()) :: tuple()
+  @spec locate_bucket(binary(), atom())  :: tuple()
   def locate_bucket(query, state) do
-    count = Config.get(:buckets)
-    {:reply, {:bucket, bucket_index(query, count)}, state}
+    bcount = Config.get(:buckets)
+
+    {:reply, {:bucket, bucket_index(query, bcount)}, state}
   end
+
+  @doc """
+  Find a replica by a constituent key or bucket
+  """
+  @spec locate_replica(integer(), atom()) :: tuple()
+  @spec locate_replica(binary(), atom())  :: tuple()
+  def locate_replica(query, state) do
+    node = Config.get(node)
+    {:reply, {:nodes, nodes}, state2} = locate_nodes(query, state)
+
+    {:reply, {:replica, Enum.find_index(node, nodes)}, state2}
+  end
+
+  @doc """
+  Find a node either by a constituent bucket or key
+  """
+  @spec locate_nodes(integer(), atom()) :: tuple()
+  @spec locate_nodes(binary(), atom())  :: tuple()
+  def locate_nodes(query, state) do
+    bcount  = Config.get(:buckets)
+    bucket = bucket_index(query, bcount)
+    [ { bucket, nodes } | _ ] = :ets.lookup(:buckets, bucket)
+
+    {:reply, {:nodes, nodes}, state}
+  end
+
 end
