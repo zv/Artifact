@@ -233,4 +233,10 @@ defmodule Artifact.Hash do
     {:reply, {:nodes, nodes}, state}
   end
 
+  defp bucket_index(bucket, count) when is_integer(bucket) do
+    rem(bucket, count)
+  end
+  defp bucket_index(key, count) do
+    hash(key) / ring_circumference(count)
+  end
 end
