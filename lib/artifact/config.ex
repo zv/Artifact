@@ -38,10 +38,7 @@ defmodule Artifact.Config do
   @doc """
   Derive the current values of configuration parameters
   """
-  def get(key) do
-    :gen_server.call(__MODULE__, {:get, key})
-  end
-
+  @spec get(nonempty_list(binary()), tuple()) :: tuple()
   def get(keys, state) when is_list(keys) do
     {:reply, do_get(keys, []), state}
   end
