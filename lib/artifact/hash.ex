@@ -239,4 +239,19 @@ defmodule Artifact.Hash do
   defp bucket_index(key, count) do
     hash(key) / ring_circumference(count)
   end
+
+  def choose_node_randomly(state) do
+    {{n1, n2, n3, n4}, port} = Config.get(:node)
+    #  Build up our condition to select our nodes out of ETS.
+    # TODO: Abstract this functionality out into
+    head      = { '$1', '_' }
+    condition = [ {'=/=', '$1', { {{{n1,n2,n3,n4}}, port} } } ]
+    body      = ['$1']
+    nodes     = :ets.select(:node_manifest, [{head, condition, body}])
+    node_len  = length(nodes)
+    case node_len do
+      0 -> {:reply, :undefined, state}
+      _ -> {:reply, {:node, Enum.at(nodes, :random.uniform(node_len))}, state}
+    end
+  end
 end
