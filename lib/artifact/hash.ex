@@ -254,4 +254,16 @@ defmodule Artifact.Hash do
       _ -> {:reply, {:node, Enum.at(nodes, :random.uniform(node_len))}, state}
     end
   end
+
+  def inversed_buckets(_node, -1, buckets), do: buckets
+  def inversed_buckets(node, bucket, buckets), do: inversed_buckets(node, Config.get(buckets)-1, [])
+  def inversed_buckets(node, bucket, buckets) do
+    [ {bucket, nodes} | _ ] = :ets.lookup(:buckets, bucket)
+    if Enum.member(node, nodes) do
+      inversed_buckets(node, bucket - 1, [bucket | buckets])
+    else
+      inversed_buckets(node, bucket - 1, buckets)
+    end
+  end
+
 end
