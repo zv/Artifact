@@ -266,4 +266,37 @@ defmodule Artifact.Hash do
     end
   end
 
+  def do_node_info(node, state) do
+    head       = {node, '$2'}
+    conditions = []
+    body       = ['$2']
+    [info] = :ets.select(:node_list, [{head, conditions, body}])
+    {:reply, {:node_info, node, info}, state}
+  end
+
+  def do_node_info(state) do
+    node = Config.get(node)
+    do_node_info(node, state)
+  end
+
+  def vnode_manifest(state) do
+    manifest = :ets.tab2list(:vnode_manifest)
+    {:reply, {:vnode_manifest, manifest}, state}}
+  end
+
+  def buckets_manifest(state) do
+    buckets = :ets.tab2list(:buckets)
+    {:reply, {:buckets, Enum.sort(buckets)}, state}}
+  end
+
+  def buckets(state) do
+    node = Config.get(node)
+    buckets = Enum.filter fn(b) ->
+      Enum.member? node, element(2, b)
+      :ets.tab2list(:buckets)
+    end
+    buckets_new = lc b inlist: buckets, do: element(1, b)
+    {:reply, {:buckets, Enum.sort(buckets_new)}, state}.
+  end
+
 end
