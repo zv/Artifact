@@ -21,26 +21,31 @@ defmodule Artifact.Hash do
   cause at most two nodes to begin reconciliatoin while other nodes may
   continue processing data normally.
 
-  * http://dl.acm.org/citation.cfm?id=258660
+  [0]: http://dl.acm.org/citation.cfm?id=258660
   """
-  use GenServer.Behaviour
-  @doc """
-    Load in our crypto module at compile time, we expect it to be wrap it's
-    "hashing" functionality in a method called `hash`. Any hash function
-    returning a binary of length 32 or greater can be used here, although
-    cryptographically secure hash functions are more readily suited for for
-    distributed hash storage in an insecure environment.
-  """
+  use Behaviour
+
+  @typedoc "The key used to lookup a node"
+  @type nodeKey :: integer | binary
+
   @hash_function :application.get_env(:artifact, :hash_function)
   @hash_length 32
-  @doc
+
+
+  @doc """
+  Hash a key w/ the module & function provided in the application environment (mix.exs)
+  """
   def crypto(hash) do
     apply(Keyword.get(@hash_function, :module), Keyword.get(@hash_function, :fun), [hash])
   end
+
+  @doc false
   def hash(key) do
     <<output :: @hash_length, _ :: binary>> = crypto(key)
     output
   end
+
+  @doc false
   def hash({{n1,n2,n3,n4}, port}, vnode) do
     <<hashed_key :: @hash_length, _rest :: binary>> =
         crypto(<< n1,n2,n3,n4, port :: 16, vnode:: 16 >>)
@@ -71,13 +76,12 @@ defmodule Artifact.Hash do
     :ok
   end
 
-  """
+  @doc """
   List nodes whose mapped keyspace falls on this key_hash
   """
   def bucket_members(_key_hash, _n, i, nodes) when i == 0 do
     {:nodes, Enum.reverse(nodes)}
   end
-
   def bucket_members(key_hash, n, i, nodes) do
     node_hash = case :ets.next(:vnode_manifest, key_hash) do
       "$end_of_table" -> :ets.first(:vnode_manifest)
@@ -123,8 +127,9 @@ defmodule Artifact.Hash do
   end
 
   """
-  update_buckets is a helper function to rearrange the buckets when a new node
-  is added.
+  `update_buckets` is called when a node becomes unavailable due to failures or
+  maintainence, or otherwise needs to level the load handled by each individual
+  machine.
   """
   defp update_buckets(-1, _node, _range, _n, _max_search, reorganized_buckets) do
     {:reorganized_buckets, reorganized_buckets}
@@ -189,19 +194,11 @@ defmodule Artifact.Hash do
     remove_nodes(rest)
   end
 
-  defp bucket_index(bucket, count) when is_integer(bucket) do
-    rem(bucket, count)
-  end
-
-  defp bucket_index(key, count) do
-    hash(key) / ring_circumference(count)
-  end
 
   @doc """
   Find a bucket by either a constituent key or the bucket id
   """
-  @spec locate_bucket(integer(), atom()) :: tuple()
-  @spec locate_bucket(binary(), atom())  :: tuple()
+  @spec locate_bucket(nodeKey(), tuple()) :: tuple()
   def locate_bucket(query, state) do
     bcount = Config.get(:buckets)
 
@@ -211,8 +208,7 @@ defmodule Artifact.Hash do
   @doc """
   Find a replica by a constituent key or bucket
   """
-  @spec locate_replica(integer(), atom()) :: tuple()
-  @spec locate_replica(binary(), atom())  :: tuple()
+  @spec locate_replica(nodeKey(), tuple()) :: tuple()
   def locate_replica(query, state) do
     node = Config.get(node)
     {:reply, {:nodes, nodes}, state2} = locate_nodes(query, state)
@@ -223,8 +219,7 @@ defmodule Artifact.Hash do
   @doc """
   Find a node either by a constituent bucket or key
   """
-  @spec locate_nodes(integer(), atom()) :: tuple()
-  @spec locate_nodes(binary(), atom())  :: tuple()
+  @spec locate_nodes(nodeKey(), tuple()) :: tuple()
   def locate_nodes(query, state) do
     bcount  = Config.get(:buckets)
     bucket = bucket_index(query, bcount)
