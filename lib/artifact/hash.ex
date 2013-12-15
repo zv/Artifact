@@ -196,6 +196,20 @@ defmodule Artifact.Hash do
   end
 
 
+  def update_nodes(nodes_to_add, nodes_to_remove, state) do
+    local_node = :artifact_config.get(:node)
+    reply =
+        case {nodes_to_add, nodes_to_remove -- [local_node]} do
+            {[], []} -> {:replaced_buckets, []}
+            _ ->
+                add_nodes(nodes_to_add)
+                remove_nodes(nodes_to_remove)
+                update_buckets()
+        end
+    {:reply, reply, state}
+  end
+
+
   @doc """
   Find a bucket by either a constituent key or the bucket id
   """
