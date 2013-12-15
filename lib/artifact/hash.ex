@@ -285,6 +285,16 @@ defmodule Artifact.Hash do
     end
   end
 
+  def choose_bucket_randomly(state) do
+    local_node = :artifact_config.get(:node)
+    buckets = inversed_buckets(local_node)
+    len = length(buckets)
+    case len do
+        0 -> {:reply, :undefined, state}
+        _ -> {:reply, {:bucket, at(buckets, :random.uniform(len))}, state}
+    end
+  end
+
   def inversed_buckets(_node, -1, buckets), do: buckets
   def inversed_buckets(node, bucket, buckets), do: inversed_buckets(node, Config.get(buckets)-1, [])
   def inversed_buckets(node, bucket, buckets) do
