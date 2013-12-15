@@ -24,6 +24,7 @@ defmodule Artifact.Hash do
   [0]: http://dl.acm.org/citation.cfm?id=258660
   """
   use Behaviour
+  import Enum, only: [ at: 2 ]
 
   @typedoc "The key used to lookup a node"
   @type nodeKey :: integer | binary
