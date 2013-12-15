@@ -250,6 +250,26 @@ defmodule Artifact.Hash do
     hash(key) / ring_circumference(count)
   end
 
+  # A collection of utility methods for finding replicas, buckets and nodes.
+  def find_bucket(key_or_bucket, state) do
+    bucket_count = Artifact.Config.get(:bucket_count)
+    {:reply, {:bucket, bucket_index(key_or_bucket, bucket_count)}, state }
+  end
+
+  def find_replica(key_or_bucket, state) do
+    local_node = :artifact_config.get(:node)
+    {:reply, {:nodes, nodes}, state2} = find_nodes(key_or_bucket, state)
+    replica = Enum.find_index(nodes, &(&1==local_node))
+    {:reply, {:replica, replica}, state2}
+  end
+
+  def find_nodes(key_or_bucket, state) do
+    bucket_count = :artifact_config.get(:bucket_count)
+    bucket       = bucket_index(key_or_bucket, bucket_count)
+    [{^bucket, nodes}|_] = :ets.lookup(:buckets, bucket)
+    {:reply, {:nodes, nodes}, state}
+  end
+
   def choose_node_randomly(state) do
     {{n1, n2, n3, n4}, port} = Config.get(:node)
     #  Build up our condition to select our nodes out of ETS.
