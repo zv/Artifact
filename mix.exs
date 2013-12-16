@@ -27,13 +27,15 @@ defmodule Artifact.Mixfile do
         # Buckets are the atomic unit of interdatabase partitioning. Adjusting
         # this upward will give you more flexibility in how finely grained your
         # data will be split at the cost of more expensive negotiation.
-        buckets: 2048,
+        bucket_count: 2048,
 
         # Individual physical nodes present themselves as a multitude of
-        # virtual nodes, therefore vnodes represents a limit of how many
-        # physical nodes exist in your datastore.
-        vnodes: 256,
-        tables: 512,
+        # virtual nodes in order to address the problem within consistent
+        # hashing of a non-uniform data distribution scheme, therefore vnodes
+        # represents a limit of how many physical nodes exist in your
+        # datastore.
+        vnode_count: 256,
+        tables_count: 512,
 
         # Only ETS is a valid storage backend at this point
         store: "ets",

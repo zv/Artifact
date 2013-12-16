@@ -115,10 +115,10 @@ defmodule Artifact.Hash do
     :ok
   end
   def add_nodes([{node, info}|tail]) do
-    case :ets.lookup(:node_list, node) do
+    case :ets.lookup(:node_manifest, node) do
       [ {^node, _info} | _ ] -> :ok
       [] ->
-        :ets.insert(:node_list, {node, info})
+        :ets.insert(:node_manifest, {node, info})
         vnode_count = Keyword.get(:vnodes, info)
         Enum.each(1..vnode_count,
           &:ets.insert(:vnode_manifest, {hash(node, &1), node})
@@ -165,19 +165,19 @@ defmodule Artifact.Hash do
   end
 
   defp update_buckets do
-    [node, n, number_of_buckets] =
-      :artifact_config.get [:node, :n, :number_of_buckets]
+    [node, n, buckets_count] =
+      :artifact_config.get [:node, :n, :buckets_count]
 
-    circumference    = ring_circumference(number_of_buckets)
-    number_of_nodes  = Keyword.get(:size, :ets.info :node_list )
+    circumference    = ring_circumference(buckets_count)
+    number_of_nodes  = Keyword.get(:size, :ets.info :node_manifest )
 
     max_search      = case number_of_nodes do
       # Don't search other nodes to fill a bucket when NumberOfNodes is
       # 1, since they are never found.
       1    -> 1
-      _    -> Keyword.get(:size, :ets.info :virtual_node_list)
+      _    -> Keyword.get(:size, :ets.info :vnode_manifest)
     end
-    update_buckets(number_of_buckets - 1, node, circumference, n, max_search, [])
+    update_buckets(buckets_count - 1, node, circumference, n, max_search, [])
   end
 
   def remove_nodes([]), do: :ok
@@ -215,9 +215,9 @@ defmodule Artifact.Hash do
   """
   @spec locate_bucket(nodeKey(), tuple()) :: tuple()
   def locate_bucket(query, state) do
-    bcount = Config.get(:buckets)
+    bcount = Artifact.Config.get(:bucket_count)
 
-    {:reply, {:bucket, bucket_index(query, bcount)}, state}
+    {:reply, {:bucket_count, bucket_index(query, bcount)}, state}
   end
 
   @doc """
@@ -225,7 +225,7 @@ defmodule Artifact.Hash do
   """
   @spec locate_replica(nodeKey(), tuple()) :: tuple()
   def locate_replica(query, state) do
-    node = Config.get(node)
+    node = Artifact.Config.get(node)
     {:reply, {:nodes, nodes}, state2} = locate_nodes(query, state)
 
     {:reply, {:replica, Enum.find_index(node, nodes)}, state2}
@@ -236,9 +236,9 @@ defmodule Artifact.Hash do
   """
   @spec locate_nodes(nodeKey(), tuple()) :: tuple()
   def locate_nodes(query, state) do
-    bcount  = Config.get(:buckets)
+    bcount  = Artifact.Config.get(:bucket_count)
     bucket = bucket_index(query, bcount)
-    [ { bucket, nodes } | _ ] = :ets.lookup(:buckets, bucket)
+    [ { ^bucket, nodes } | _ ] = :ets.lookup(:buckets, bucket)
 
     {:reply, {:nodes, nodes}, state}
   end
@@ -271,7 +271,7 @@ defmodule Artifact.Hash do
   end
 
   def choose_node_randomly(state) do
-    {{n1, n2, n3, n4}, port} = Config.get(:node)
+    {{n1, n2, n3, n4}, port} = Artifact.Config.get(:node)
     #  Build up our condition to select our nodes out of ETS.
     # TODO: Abstract this functionality out into
     head      = { '$1', '_' }
@@ -310,29 +310,29 @@ defmodule Artifact.Hash do
     head       = {node, '$2'}
     conditions = []
     body       = ['$2']
-    [info] = :ets.select(:node_list, [{head, conditions, body}])
+    [info] = :ets.select(:node_manifest, [{head, conditions, body}])
     {:reply, {:node_info, node, info}, state}
   end
 
   def do_node_info(state) do
-    node = Config.get(node)
+    node = Artifact.Config.get(node)
     do_node_info(node, state)
   end
 
   def vnode_manifest(state) do
     manifest = :ets.tab2list(:vnode_manifest)
-    {:reply, {:vnode_manifest, manifest}, state}}
+    {:reply, {:vnode_manifest, manifest}, state}
   end
 
   def buckets_manifest(state) do
     buckets = :ets.tab2list(:buckets)
-    {:reply, {:buckets, Enum.sort(buckets)}, state}}
+    {:reply, {:buckets, Enum.sort(buckets)}, state}
   end
 
   def buckets(state) do
-    node = Config.get(node)
+    node = Artifact.Config.get(node)
     buckets = Enum.filter fn(b) ->
-      Enum.member? node, element(2, b)
+      Enum.member? node, at(b, 2)
       :ets.tab2list(:buckets)
     end
     buckets_new = lc b inlist: buckets, do: element(1, b)
