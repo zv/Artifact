@@ -1,10 +1,10 @@
 defmodule Artifact.Hash do
-  @compile {:nowarn_unused_function, [bucket_members: 4]}
-  @docmodule """
-  This module provides functions for creating new nodes and storing the
-  keyspace assigned to those nodes into the underlying storage backend.
+  @moduledoc %S"""
+  A set of functions for creating new nodes, storing and searching the keyspace
+  assigned to those nodes into the underlying storage backend.
 
   ## Hashing Scheme
+
   Artifact's hashing scheme is accomplished through the use of a cheap hash
   function such as Murmur (Murmur is general purpose and very quick quicker,
   however some distribution scenarios can be impacted by a cryptographically
