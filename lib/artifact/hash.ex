@@ -343,8 +343,80 @@ defmodule Artifact.Hash do
       Enum.member? node, at(b, 2)
       :ets.tab2list(:buckets)
     end
-    buckets_new = lc b inlist: buckets, do: element(1, b)
-    {:reply, {:buckets, Enum.sort(buckets_new)}, state}.
+    buckets_new = lc b inlist buckets, do: at(b, 1)
+    {:reply, {:buckets, Enum.sort(buckets_new)}, state}
   end
+
+  # Callbacks
+
+  def handle_call(:stop, _from, state) do
+    {:stop, :normal, :stopped, state}
+  end
+  def handle_call({:update_nodes, nodes_added, nodes_removed}, _from, state) do
+    update_nodes(nodes_added, nodes_removed, state)
+  end
+  def handle_call({:find_bucket, key_or_bucket}, _from, state) do
+    find_bucket(key_or_bucket, state)
+  end
+  def handle_call({:find_replica, key_or_bucket}, _from, state) do
+    find_replica(key_or_bucket, state);
+  end
+  def handle_call({:find_nodes, key_or_bucket}, _from, state) do
+    find_nodes(key_or_bucket, state)
+  end
+  def handle_call(:choose_node_randomly, _from, state) do
+    choose_node_randomly(state)
+  end
+  def handle_call(:choose_bucket_randomly, _from, state) do
+    choose_bucket_randomly(state)
+  end
+  def handle_call({:node_info, node}, _from, state), do: do_node_info(node, state)
+  def handle_call(:node_info, _from, state), do: do_node_info(state)
+  def handle_call(:node_manifest, _from, state), do: node_manifest(state)
+  def handle_call(:vnode_manifest, _from, state), do: vnode_manifest(state)
+  def handle_call(:buckets_manifest, _from, state), do: buckets_manifest(state)
+  def handle_call(:buckets, _from, state), do: buckets(state)
+
+  def handle_cast(_msg, state), do: {:noreply, state}
+
+  def handle_info(_info, state), do: {:noreply, state}
+
+  def code_change(_oldvsn, state, _extra), do: {:ok, state}
+
+  def stop(), do: :gen_server.call(__MODULE__, :stop)
+
+  def update_nodes(nodes_added, nodes_removed) do
+    :gen_server.call(__MODULE__, {:update_nodes, nodes_added, nodes_removed})
+  end
+
+  def find_bucket(key_or_bucket) do
+    :gen_server.call(__MODULE__, {:find_bucket, key_or_bucket})
+  end
+
+  def find_replica(key_or_bucket) do
+    :gen_server.call(__MODULE__, {:find_replica, key_or_bucket})
+  end
+
+  def find_nodes(key_or_bucket) do
+    :gen_server.call(__MODULE__, {:find_nodes, key_or_bucket})
+  end
+
+  def choose_node_randomly() do
+    :gen_server.call(__MODULE__, choose_node_randomly)
+  end
+  def choose_bucket_randomly() do
+    :gen_server.call(__MODULE__, choose_bucket_randomly)
+  end
+
+  def node_info(), do: :gen_server.call(__MODULE__, :node_info)
+  def node_info(node), do: :gen_server.call(__MODULE__, {:node_info, node})
+
+  def node_manifest(), do: :gen_server.call(__MODULE__, :node_manifest)
+
+  def vnode_manifest(), do: :gen_server.call(__MODULE__, :vnode_manifest)
+
+  def buckets_manifest(), do: :gen_server.call(__MODULE__, :buckets_manifest)
+
+  def buckets(), do: :gen_server.call(__MODULE__, :buckets)
 
 end
