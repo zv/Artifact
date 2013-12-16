@@ -3,3 +3,4 @@
 lib/deps/
 erl_crash.dump
 *.ez
+*.beam
