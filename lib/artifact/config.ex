@@ -53,22 +53,18 @@ defmodule Artifact.Config do
       _ -> nil
     end
   end
-
   defp do_get([], list_of_values) do
     Enum.reverse(list_of_values)
   end
-
   defp do_get([key|rest], list_of_values) do
     do_get(rest, [do_get(key)|list_of_values])
-  end
-
-  def stop do
-    :gen_server.call(__MODULE__, :stop)
   end
 
   def node_info do
     :gen_server.call(__MODULE__, :node_info)
   end
+
+  # Behaviour Callbacks
 
   def node_info(state) do
     [local_node, vnodes] = do_get([:node, :vnodes], [])
@@ -76,7 +72,13 @@ defmodule Artifact.Config do
     {:reply, {:node_info, local_node, info}, state}
   end
 
-  # Behaviour Callbacks
+  def stop do
+    :gen_server.call(__MODULE__, :stop)
+  end
+
+  def get(key) do
+    :gen_server.call(__MODULE__, {:get, key})
+  end
 
   def handle_call(:stop, _from, state) do
     {:stop, :normal, :stopped, state}
