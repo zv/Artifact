@@ -27,20 +27,20 @@ defmodule ArtifactTest.Config do
   end
 
   test "Got node info" do
-    assert Artifact.Config.node_info == 
-      {:node_info, {{127,0,0,1}, 10070}, [{:vnodes, 256}]} 
+    assert Artifact.Config.node_info ==
+      {:node_info, {{127,0,0,1}, 10070}, [{:vnodes, 256}]}
   end
 
-  test "got Bucket count config" do 
+  test "got Bucket count config" do
     assert Artifact.Config.get(:buckets) == 2048
   end
 
-  test "got Virtual Node count config" do 
-    assert Artifact.Config.get(:vnodes) == 256 
+  test "got Virtual Node count config" do
+    assert Artifact.Config.get(:vnodes) == 256
   end
 
   test "Got multipart configuration" do
-    assert Artifact.Config.get([:node, :buckets, :vnodes]) == 
+    assert Artifact.Config.get([:node, :buckets, :vnodes]) ==
       [{{127,0,0,1}, 10070}, 2048, 256]
   end
 
