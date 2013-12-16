@@ -33,9 +33,7 @@ defmodule Artifact.Hash do
   @hash_length 32
 
 
-  @doc """
-  Hash a key w/ the module & function provided in the application environment (mix.exs)
-  """
+  ## Hash a key w/ the module & function provided in the application environment (mix.exs)
   defp crypto(hash) do
     apply(Keyword.get(@hash_function, :module), Keyword.get(@hash_function, :fun), [hash])
   end
@@ -54,7 +52,7 @@ defmodule Artifact.Hash do
   end
 
   @doc false
-  defp start_link do
+  def start_link do
     :gen_server.start_link({:local, __MODULE__}, __MODULE__, [], _options = [])
   end
 
@@ -77,9 +75,7 @@ defmodule Artifact.Hash do
     :ok
   end
 
-  @doc """
-  List nodes whose mapped keyspace falls on this key_hash
-  """
+  ## List nodes whose mapped keyspace falls on this key_hash
   defp bucket_members(_key_hash, _n, i, nodes) when i == 0 do
     {:nodes, Enum.reverse(nodes)}
   end
@@ -107,10 +103,8 @@ defmodule Artifact.Hash do
     trunc(:math.pow(2, @hash_length) / bucket_count)
   end
 
-  @doc """
-    Fetches & writes another virtual node entry into the global vnode manifest.
-    No locks are acquired so each manifest is node distinct .
-  """
+  ## Fetches & writes another virtual node entry into the global vnode manifest.
+  ## No locks are acquired so each manifest is node distinct .
   defp add_nodes(nodes) when nodes == [] do
     :ok
   end
@@ -231,9 +225,7 @@ defmodule Artifact.Hash do
     {:reply, {:replica, Enum.find_index(node, nodes)}, state2}
   end
 
-  @doc """
-  Find a node either by a constituent bucket or key
-  """
+  ## Find a node either by a constituent bucket or key
   @spec locate_nodes(nodeKey(), tuple()) :: tuple()
   defp locate_nodes(query, state) do
     bcount  = Artifact.Config.get(:bucket_count)
