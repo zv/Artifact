@@ -36,25 +36,25 @@ defmodule Artifact.Hash do
   @doc """
   Hash a key w/ the module & function provided in the application environment (mix.exs)
   """
-  def crypto(hash) do
+  defp crypto(hash) do
     apply(Keyword.get(@hash_function, :module), Keyword.get(@hash_function, :fun), [hash])
   end
 
   @doc false
-  def hash(key) do
+  defp hash(key) do
     <<output :: @hash_length, _ :: binary>> = crypto(key)
     output
   end
 
   @doc false
-  def hash({{n1,n2,n3,n4}, port}, vnode) do
+  defp hash({{n1,n2,n3,n4}, port}, vnode) do
     <<hashed_key :: @hash_length, _rest :: binary>> =
         crypto(<< n1,n2,n3,n4, port :: 16, vnode:: 16 >>)
       hashed_key
   end
 
   @doc false
-  def start_link do
+  defp start_link do
     :gen_server.start_link({:local, __MODULE__}, __MODULE__, [], _options = [])
   end
 
@@ -80,10 +80,10 @@ defmodule Artifact.Hash do
   @doc """
   List nodes whose mapped keyspace falls on this key_hash
   """
-  def bucket_members(_key_hash, _n, i, nodes) when i == 0 do
+  defp bucket_members(_key_hash, _n, i, nodes) when i == 0 do
     {:nodes, Enum.reverse(nodes)}
   end
-  def bucket_members(key_hash, n, i, nodes) do
+  defp bucket_members(key_hash, n, i, nodes) do
     node_hash = case :ets.next(:vnode_manifest, key_hash) do
       "$end_of_table" -> :ets.first(:vnode_manifest)
       other           -> other
@@ -111,10 +111,10 @@ defmodule Artifact.Hash do
     Fetches & writes another virtual node entry into the global vnode manifest.
     No locks are acquired so each manifest is node distinct .
   """
-  def add_nodes(nodes) when nodes == [] do
+  defp add_nodes(nodes) when nodes == [] do
     :ok
   end
-  def add_nodes([{node, info}|tail]) do
+  defp add_nodes([{node, info}|tail]) do
     case :ets.lookup(:node_manifest, node) do
       [ {^node, _info} | _ ] -> :ok
       [] ->
@@ -180,9 +180,9 @@ defmodule Artifact.Hash do
     update_buckets(buckets_count - 1, node, circumference, n, max_search, [])
   end
 
-  def remove_nodes([]), do: :ok
+  defp remove_nodes([]), do: :ok
 
-  def remove_nodes([node | rest]) do
+  defp remove_nodes([node | rest]) do
     case :ets.lookup(:node_manifest, node) do
       [ { node, info } | _ ] ->
           :ets.delete(:node_manifest, node)
@@ -235,7 +235,7 @@ defmodule Artifact.Hash do
   Find a node either by a constituent bucket or key
   """
   @spec locate_nodes(nodeKey(), tuple()) :: tuple()
-  def locate_nodes(query, state) do
+  defp locate_nodes(query, state) do
     bcount  = Artifact.Config.get(:bucket_count)
     bucket = bucket_index(query, bcount)
     [ { ^bucket, nodes } | _ ] = :ets.lookup(:buckets, bucket)
@@ -295,8 +295,8 @@ defmodule Artifact.Hash do
     end
   end
 
-  def inversed_buckets(_node, -1, buckets), do: buckets
-  def inversed_buckets(node, bucket, buckets) do
+  defp inversed_buckets(_node, -1, buckets), do: buckets
+  defp inversed_buckets(node, bucket, buckets) do
     [ {bucket, nodes} | _ ] = :ets.lookup(:buckets, bucket)
     if Enum.member(node, nodes) do
       inversed_buckets(node, bucket - 1, [bucket | buckets])
@@ -304,9 +304,9 @@ defmodule Artifact.Hash do
       inversed_buckets(node, bucket - 1, buckets)
     end
   end
-  def inversed_buckets(node), do: inversed_buckets(node, Artifact.Config.get(buckets)-1, [])
+  defp inversed_buckets(node), do: inversed_buckets(node, Artifact.Config.get(buckets)-1, [])
 
-  def do_node_info(node, state) do
+  defp do_node_info(node, state) do
     head       = {node, '$2'}
     conditions = []
     body       = ['$2']
@@ -314,7 +314,7 @@ defmodule Artifact.Hash do
     {:reply, {:node_info, node, info}, state}
   end
 
-  def do_node_info(state) do
+  defp do_node_info(state) do
     node = Artifact.Config.get(node)
     do_node_info(node, state)
   end
