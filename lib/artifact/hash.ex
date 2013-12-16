@@ -296,7 +296,6 @@ defmodule Artifact.Hash do
   end
 
   def inversed_buckets(_node, -1, buckets), do: buckets
-  def inversed_buckets(node, bucket, buckets), do: inversed_buckets(node, Config.get(buckets)-1, [])
   def inversed_buckets(node, bucket, buckets) do
     [ {bucket, nodes} | _ ] = :ets.lookup(:buckets, bucket)
     if Enum.member(node, nodes) do
@@ -305,6 +304,7 @@ defmodule Artifact.Hash do
       inversed_buckets(node, bucket - 1, buckets)
     end
   end
+  def inversed_buckets(node), do: inversed_buckets(node, Artifact.Config.get(buckets)-1, [])
 
   def do_node_info(node, state) do
     head       = {node, '$2'}
