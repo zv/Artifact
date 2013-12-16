@@ -319,6 +319,14 @@ defmodule Artifact.Hash do
     do_node_info(node, state)
   end
 
+  def node_manifest(state) do
+    node_manifest = :ets.tab2list(:node_manifest)
+    mapped_list = Enum.map(node_manifest, fn({node, _info}) ->
+      node
+    end)
+    {:reply, {:node_manifest, mapped_list}, state}
+  end
+
   def vnode_manifest(state) do
     manifest = :ets.tab2list(:vnode_manifest)
     {:reply, {:vnode_manifest, manifest}, state}
