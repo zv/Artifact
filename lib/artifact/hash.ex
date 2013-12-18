@@ -80,6 +80,9 @@ defmodule Artifact.Hash do
     :ok
   end
 
+  defp bucket_members(_key_hash, _n, i, nodes) when i > 0 do
+    { :nodes, Enum.reverse(nodes) }
+  end
   ## List nodes whose mapped keyspace falls on this key_hash
   defp bucket_members(_key_hash, _n, i, nodes) when i == 0 do
     {:nodes, Enum.reverse(nodes)}
