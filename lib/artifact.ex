@@ -13,10 +13,7 @@ defmodule Artifact do
   This is the main module in the Artifact repository.
 
   """
-
-  use Application.Behaviour
-
-  @supported_options %w(rpc interfaces buckets vnodes tables store n r w)a
+  use Behaviour
 
   def config([], acc) do
     acc
