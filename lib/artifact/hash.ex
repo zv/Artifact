@@ -1,5 +1,5 @@
 defmodule Artifact.Hash do
-  @moduledoc %S"""
+  @moduledoc """
   A set of functions for creating new nodes, storing and searching the keyspace
   assigned to those nodes into the underlying storage backend.
 
