@@ -3,8 +3,8 @@ defmodule Artifact.Mixfile do
 
   def project do
     [ app: :artifact,
-      version: "0.0.1",
-      elixir: "~> 0.12.0",
+      version: "0.1",
+      elixir: "~> 0.15.0",
       deps: deps ]
   end
 
