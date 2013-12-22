@@ -59,29 +59,10 @@ defmodule Artifact.Mixfile do
           # module: "ghelper", fun: "murmur32"
         ],
 
-        # Logging related info
-        lager: [
-          colored: true,
-          handlers: [
-            lager_console_backend: "info",
-            lager_file_backend: [
-              file: "error.log",
-              level: "error"
-            ],
-            lager_file_backend: [
-              file: "console.log",
-              level: "info"
-            ]
-          ]
-        ]
       ]
     ]
   end
 
   defp deps do
-    [
-      # Exlager is a wrapper of the classic logging library from Basho
-      { :exlager, ref: "0b840aae773e6eb6de7cdbb703b47031b6608bfb", github: "khia/exlager"}
-    ]
   end
 end
