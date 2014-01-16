@@ -2,14 +2,26 @@ defmodule Artifact.Mixfile do
   use Mix.Project
 
   def project do
-    [ app: :artifact,
+    [
+      app: :artifact,
       version: "0.1",
       elixir: "~> 0.15.0",
-      deps: deps ]
+      deps: deps,
+      package: package,
+      description: description
+    ]
   end
 
   def application do
     [
+      mod: {Artifact, []},
+      applications: [
+        :artifact
+      ],
+      registered: [
+        Artifact.Supervisor,
+        Artifact.Config
+      ],
       env: [
         # Basic process configuration
         rpc: [
@@ -63,6 +75,24 @@ defmodule Artifact.Mixfile do
     ]
   end
 
-  defp deps do
+  defp package do
+    %{licenses: ["MIT"],
+      contributors: ["Zephyr Pellerin"],
+      links: %{"Github" => "https://github.com/zv/artifact"}
+    }
   end
+
+  defp description do
+    """
+    A distributed database inspired by Chord with a wide array of features from
+    the Dynamo Paper, the XZZ Paper and more
+    """
+  end
+
+  defp deps(_) do
+    [
+      { :artifact, project[:version] }
+    ]
+  end
+
 end
