@@ -1,20 +1,17 @@
 defmodule Artifact.Supervisor do
-  use Supervisor.Behaviour
-
-  defmacro server do
-    __MODULE__
-  end
+  use Supervisor
 
   # Callbacks
 
-  def start_link(args) do 
-    :supervisor.start_link({:local, server}, server, args)
-  end
+  def start_link(args), do: Supervisor.start_link(__MODULE__, :ok)
 
-  def init(user_options) do
+  @logger Artifact.Logging
+  @config Artifact.Config
+
+  def init(:ok) do
     tree = [
-      worker(Artifact.Config, [user_options]),
-      worker(Artifact.Logging, [user_options])
+      worker(Artifact.Config, [[name: @config]]),
+      worker(Artifact.Logging, [[name: @logger]])
     ]
     supervise(tree, strategy: :one_for_one) 
   end
