@@ -1,5 +1,5 @@
 defmodule Artifact.Config do
-  use GenServer.Behaviour
+  use GenServer
 
   def start_link(args) do
     :gen_server.start_link({:local, __MODULE__}, __MODULE__, args, _options = [])
