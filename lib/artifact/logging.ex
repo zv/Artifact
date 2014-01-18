@@ -6,7 +6,7 @@ defmodule Artifact.Logging do
   example to provide a distributed 'health' GUI or syslogd service simply by
   recieving logs over a socket). 
   """
-  use GenServer.Behaviour
+  use GenServer
 
   def init(_args) do
     case Artifact.Config.get(:logging) do
