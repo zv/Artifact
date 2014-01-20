@@ -15,22 +15,8 @@ defmodule Artifact do
   """
   use Behaviour
 
-  def config([], acc) do
-    acc
-  end
-
-  def config([key | tail], acc) do
-    case :application.get_env(:artifact, key) do
-      {:ok, value } -> config(tail, [ {key, value} | acc ])
-      :undefined    -> config(tail, acc)
-    end
-  end
-
   def start(_type, _args) do
-    args = config([ @supported_options ], [])
-    :artifact_supervisor.start_link(args)
+    Artifact.Supervisor.start_link(args)
   end
-
-  def start, do: System.start(:artifact)
 
 end
