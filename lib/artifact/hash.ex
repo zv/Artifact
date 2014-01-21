@@ -29,7 +29,7 @@ defmodule Artifact.Hash do
   @typedoc "The key used to lookup a node"
   @type nodeKey :: integer | binary
 
-  @hash_function :application.get_env(:artifact, :hash_function)
+  @hash_function Application.get_env(:artifact, :hash_function)
   @hash_length 32
 
   def crypto do
@@ -58,7 +58,7 @@ defmodule Artifact.Hash do
 
   @doc false
   def start_link do
-    :gen_server.start_link({:local, __MODULE__}, __MODULE__, [], _options = [])
+    GenServer.start_link({:local, __MODULE__}, __MODULE__, [], _options = [])
   end
 
   @doc false
@@ -383,40 +383,40 @@ defmodule Artifact.Hash do
 
   def code_change(_oldvsn, state, _extra), do: {:ok, state}
 
-  def stop(), do: :gen_server.call(__MODULE__, :stop)
+  def stop(), do: GenServer.call(__MODULE__, :stop)
 
   def update_nodes(nodes_added, nodes_removed) do
-    :gen_server.call(__MODULE__, {:update_nodes, nodes_added, nodes_removed})
+    GenServer.call(__MODULE__, {:update_nodes, nodes_added, nodes_removed})
   end
 
   def find_bucket(key_or_bucket) do
-    :gen_server.call(__MODULE__, {:find_bucket, key_or_bucket})
+    GenServer.call(__MODULE__, {:find_bucket, key_or_bucket})
   end
 
   def find_replica(key_or_bucket) do
-    :gen_server.call(__MODULE__, {:find_replica, key_or_bucket})
+    GenServer.call(__MODULE__, {:find_replica, key_or_bucket})
   end
 
   def find_nodes(key_or_bucket) do
-    :gen_server.call(__MODULE__, {:find_nodes, key_or_bucket})
+    GenServer.call(__MODULE__, {:find_nodes, key_or_bucket})
   end
 
   def choose_node_randomly() do
-    :gen_server.call(__MODULE__, choose_node_randomly)
+    GenServer.call(__MODULE__, choose_node_randomly)
   end
   def choose_bucket_randomly() do
-    :gen_server.call(__MODULE__, choose_bucket_randomly)
+    GenServer.call(__MODULE__, choose_bucket_randomly)
   end
 
-  def node_info(), do: :gen_server.call(__MODULE__, :node_info)
-  def node_info(node), do: :gen_server.call(__MODULE__, {:node_info, node})
+  def node_info(), do: GenServer.call(__MODULE__, :node_info)
+  def node_info(node), do: GenServer.call(__MODULE__, {:node_info, node})
 
-  def node_manifest(), do: :gen_server.call(__MODULE__, :node_manifest)
+  def node_manifest(), do: GenServer.call(__MODULE__, :node_manifest)
 
-  def vnode_manifest(), do: :gen_server.call(__MODULE__, :vnode_manifest)
+  def vnode_manifest(), do: GenServer.call(__MODULE__, :vnode_manifest)
 
-  def buckets_manifest(), do: :gen_server.call(__MODULE__, :buckets_manifest)
+  def buckets_manifest(), do: GenServer.call(__MODULE__, :buckets_manifest)
 
-  def buckets(), do: :gen_server.call(__MODULE__, :buckets)
+  def buckets(), do: GenServer.call(__MODULE__, :buckets)
 
 end

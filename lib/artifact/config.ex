@@ -2,7 +2,7 @@ defmodule Artifact.Config do
   use GenServer
 
   def start_link(args) do
-    :gen_server.start_link({:local, __MODULE__}, __MODULE__, args, _options = [])
+    GenServer.start_link({:local, __MODULE__}, __MODULE__, args, _options = [])
   end
 
   def init(args) do
@@ -61,7 +61,7 @@ defmodule Artifact.Config do
   end
 
   def node_info do
-    :gen_server.call(__MODULE__, :node_info)
+    GenServer.call(__MODULE__, :node_info)
   end
 
   # Behaviour Callbacks
@@ -73,11 +73,11 @@ defmodule Artifact.Config do
   end
 
   def stop do
-    :gen_server.call(__MODULE__, :stop)
+    GenServer.call(__MODULE__, :stop)
   end
 
   def get(key) do
-    :gen_server.call(__MODULE__, {:get, key})
+    GenServer.call(__MODULE__, {:get, key})
   end
 
   def handle_call(:stop, _from, state) do
