@@ -89,10 +89,8 @@ defmodule Artifact.Mixfile do
     """
   end
 
-  defp deps(_) do
-    [
-      { :artifact, project[:version] }
-    ]
+  defp deps do
+    [ { :vclock, path: "vclock/vclock.erl" } ]
   end
 
 end
