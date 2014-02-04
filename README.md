@@ -1,9 +1,15 @@
 <img src="http://zv.github.io/images/artifact.png">
 
+# Artifact
+
+## Introduction
+
 Artifact is a distributed storage system inspired by the Amazon [Dynamo
-Paper](http://www.cs.ucsb.edu/~agrawal/fall2009/dynamo.pdf). Artifact was
-initially a implementation of Dynamo in Erlang. This repository contains a
-rewrite of Artifact in the new BEAM language, [Elixir](http://elixir-lang.org). 
+Paper](http://www.cs.ucsb.edu/~agrawal/fall2009/dynamo.pdf). Artifact began 
+life as an implementation of the dynamo paper in Erlang. The introduction of
+Elixir brought the BEAM/OTP ecosystem forward significantly. As a consequence
+the project today is a completely, from the ground up rewrite of Artifact in
+Elixir and has strayed considerably from an idealized Dynamo system.
 
 ## What does it do?
 
