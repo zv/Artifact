@@ -1,7 +1,5 @@
 <img src="http://zv.github.io/images/artifact.png">
 
-# Artifact
-
 Artifact is a distributed storage system inspired by the Amazon [Dynamo
 Paper](http://www.cs.ucsb.edu/~agrawal/fall2009/dynamo.pdf). Artifact was
 initially a implementation of Dynamo in Erlang. This repository contains a
