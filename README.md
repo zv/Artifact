@@ -7,9 +7,9 @@
 Artifact is a distributed storage system inspired by the Amazon [Dynamo
 Paper](http://www.cs.ucsb.edu/~agrawal/fall2009/dynamo.pdf). Artifact began 
 life as an implementation of the dynamo paper in Erlang. The introduction of
-Elixir brought the BEAM/OTP ecosystem forward significantly. As a consequence
-the project today is a completely, from the ground up rewrite of Artifact in
-Elixir and has strayed considerably from an idealized Dynamo system.
+[Elixir](http://elixir-lang.org) precipitated numerous changes in the OTP ecosystem, consequently
+the project began anew as a ground up rewrite Elixir and has introduced several
+features that cause it to diverge significantly from it's initial implementation.
 
 ## What does it do?
 
