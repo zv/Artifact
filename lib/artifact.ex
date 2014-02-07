@@ -15,7 +15,13 @@ defmodule Artifact do
   """
   use Behaviour
 
-  def start(_type, _args) do
+  @type vclock_node :: term
+  @type timestamp   :: number
+  @type counter     :: number
+  @type dot         :: {vclock_node, {counter, timestamp}}
+  @type vclock      :: [dot]
+
+  def start(_type , _args) do
     Artifact.Supervisor.start_link(args)
   end
 
