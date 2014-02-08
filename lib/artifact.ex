@@ -21,6 +21,26 @@ defmodule Artifact do
   @type dot         :: {vclock_node, {counter, timestamp}}
   @type vclock      :: [dot]
 
+  defmodule Data do
+    @moduledoc """
+    This is a struct used to represent a piece of keyed data stored by an
+    Artifact node
+    """
+    @type key           :: bitstring
+    @type bucket        :: number
+    @type last_modified :: number
+    @type vector_clocks :: vclock
+    @type checksum      :: binary
+    @type flags         :: bitstring
+    @type value         :: binary
+
+    defstruct {
+      key: key, bucket: bucket,
+      last_modified: last_modified, vector_clocks: vector_clocks,
+      checksum: checksum, flags: flags, value: value
+    }
+  end
+
   def start(_type , _args) do
     Artifact.Supervisor.start_link(args)
   end
