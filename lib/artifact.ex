@@ -1,6 +1,5 @@
 defmodule Artifact do
   @moduledoc """
-
   Artifact is a performant, scalable distributed key-value store system,
   whose intellectual ancestor is Amazon's Dynamo database model, but serves as
   one of (if not the only) implementation of the SILT database concept.
@@ -11,8 +10,8 @@ defmodule Artifact do
   realtime, low-latency environment.
 
   This is the main module in the Artifact repository.
-
   """
+
   use Behaviour
 
   @type vclock_node :: term
@@ -40,6 +39,42 @@ defmodule Artifact do
       checksum: checksum, flags: flags, value: value
     }
   end
+
+  @doc """
+  Logs an error
+
+  ## Examples
+
+      Artifact.error "oops"
+  """
+  defmacro error(message), do: log(:error, message)
+
+  @doc """
+  Logs a warning.
+
+  ## Examples
+
+      Artifact.warning "knob turned too far to the right"
+  """
+  defmacro warning(message), do: log(:warning, message)
+
+  @doc """
+  Logs an informational message.
+
+  ## Examples
+
+      Artifact.info "My name is artifact"
+  """
+  defmacro info(message), do: log(:info, message)
+
+  @doc """
+  Logs a debug message
+
+  ## Examples
+
+      Artifact.debug "error?"
+  """
+  defmacro debug(message), do: log(:debug, message)
 
   def start(_type , _args) do
     Artifact.Supervisor.start_link(args)
