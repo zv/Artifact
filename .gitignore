@@ -1,8 +1,5 @@
-/ebin
+/_build
+/cover
 /deps
-lib/deps/
 erl_crash.dump
-_build/
 *.ez
-*.beam
-

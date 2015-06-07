@@ -6,7 +6,7 @@ defmodule Artifact do
 
   It's open source and freely available on github. Unstructured and permissive
   in what it accepts, strict in what it delivers -- perfect for storing large
-  numbers of small (<128k) data records which need to be read or processed in a
+  integers of small (<128k) data records which need to be read or processed in a
   realtime, low-latency environment.
 
   This is the main module in the Artifact repository.
@@ -14,32 +14,35 @@ defmodule Artifact do
 
   use Behaviour
 
-  @type vclock_node :: term
-  @type timestamp   :: number
-  @type counter     :: number
-  @type dot         :: {vclock_node, {counter, timestamp}}
-  @type vclock      :: [dot]
-
   defmodule Data do
-    @moduledoc """
+    @typedoc """
     This is a struct used to represent a piece of keyed data stored by an
     Artifact node
     """
-    @type key           :: bitstring
-    @type bucket        :: number
-    @type last_modified :: number
-    @type vector_clocks :: vclock
-    @type checksum      :: binary
-    @type flags         :: bitstring
-    @type value         :: binary
+    @type vclock_node :: term
+    @type timestamp   :: integer
+    @type counter     :: integer
+    @type dot         :: {vclock_node, {counter, timestamp}}
+    @type vclock      :: [dot]
 
-    defstruct {
-      key: key, bucket: bucket,
-      last_modified: last_modified, vector_clocks: vector_clocks,
-      checksum: checksum, flags: flags, value: value
-    }
+    @type data :: %Data{key:           bitstring,
+                        bucket:        integer,
+                        last_modified: integer,
+                        vector_clocks: vclock,
+                        checksum:      binary,
+                        flags:         bitstring,
+                        value:         binary}
+
+    defstruct key: nil,
+              bucket: nil,
+              last_modified: nil,
+              vector_clocks: nil,
+              checksum: nil,
+              flags: nil,
+              value: nil
   end
 
+  require Logger
   @doc """
   Logs an error
 
@@ -47,7 +50,7 @@ defmodule Artifact do
 
       Artifact.error "oops"
   """
-  defmacro error(message), do: log(:error, message)
+  defmacro error(message), do: Logger.error(message)
 
   @doc """
   Logs a warning.
@@ -56,7 +59,7 @@ defmodule Artifact do
 
       Artifact.warning "knob turned too far to the right"
   """
-  defmacro warning(message), do: log(:warning, message)
+  defmacro warning(message), do: Logger.warn(message)
 
   @doc """
   Logs an informational message.
@@ -65,7 +68,7 @@ defmodule Artifact do
 
       Artifact.info "My name is artifact"
   """
-  defmacro info(message), do: log(:info, message)
+  defmacro info(message), do: Logger.info(message)
 
   @doc """
   Logs a debug message
@@ -74,9 +77,10 @@ defmodule Artifact do
 
       Artifact.debug "error?"
   """
-  defmacro debug(message), do: log(:debug, message)
+  defmacro debug(message), do: Logger.debug(message)
 
   def start(_type , _args) do
+    args = Application.get_all_env(:artifact)
     Artifact.Supervisor.start_link(args)
   end
 

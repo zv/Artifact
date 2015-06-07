@@ -33,8 +33,8 @@ defmodule Artifact.Hash do
   @hash_length 32
 
   def crypto do
-    apply(Crypto.hash(@hash_function, :module), Keyword.get(@hash_function, :fun), [hash])
-    hash
+    # apply(Crypto.hash(@hash_function, :module), Keyword.get(@hash_function, :fun), [hash])
+    # hash
   end
 
 
@@ -129,8 +129,8 @@ defmodule Artifact.Hash do
     add_nodes(tail)
   end
 
-  """
-  `update_buckets` is called when a node becomes unavailable due to failures or
+  @doc """
+  'update_buckets' is called when a node becomes unavailable due to failures or
   maintainence, or otherwise needs to level the load handled by each individual
   machine.
   """
@@ -343,7 +343,7 @@ defmodule Artifact.Hash do
       Enum.member? node, at(b, 2)
       :ets.tab2list(:buckets)
     end
-    buckets_new = lc b inlist buckets, do: at(b, 1)
+    buckets_new = for b <- buckets, do: at(b, 1)
     {:reply, {:buckets, Enum.sort(buckets_new)}, state}
   end
 

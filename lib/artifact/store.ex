@@ -9,7 +9,7 @@ defmodule Artifact.Store do
   def start_link do
     # TODO: defmacro this block
     storage = Application.get_env(:store)
-    module = "Artifact" <> "." to_string(__MODULE__) <> "." <> storage
+    module = "Artifact" <> "." <> to_string(__MODULE__) <> "." <> storage
     apply(module, :start_link, [__MODULE__])
   end
 
@@ -25,7 +25,7 @@ defmodule Artifact.Store do
 
   def put(data), do: GenServer.call(__MODULE__, {:put, data})
 
-  def delete(data), do : GenServer.call(__MODULE__, {:delete, data})
+  def delete(data), do: GenServer.call(__MODULE__, {:delete, data})
 
   def info(name), do: GenServer.call(__MODULE__, {:info, name})
 

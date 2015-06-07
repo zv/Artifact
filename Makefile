@@ -1,6 +1,6 @@
-all: artifact 
+all: artifact
 
-artifact: 
+artifact:
 	@ echo "==> artifact (compile)"
 	mix compile
 	@ echo "==> complete";
@@ -8,5 +8,5 @@ artifact:
 clean:
 	mix clean
 
-test: 	
+test:
 	mix test
