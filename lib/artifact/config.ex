@@ -31,9 +31,16 @@ defmodule Artifact.Config do
     {:ok, []}
   end
 
-  def terminate(_reason, _state) do
-    :ets.delete(:config)
-  end
+  def terminate(_reason, _state), do: :ets.delete(:config)
+
+  @doc """
+  Specifies the daemon timeout window used by RPC
+  """
+  @daemon_timeout 3000
+  @daemon_timer 1000
+  def timer, do: @daemon_timer
+  def timeout, do: @daemon_timeout
+
 
   @doc """
   Derive the current values of configuration parameters
@@ -43,9 +50,7 @@ defmodule Artifact.Config do
     {:reply, do_get(keys, []), state}
   end
 
-  def get(key, state) do
-    {:reply, do_get(key), state}
-  end
+  def get(key, state), do: {:reply, do_get(key), state}
 
   defp do_get(key) do
     case :ets.lookup(:config, key) do
@@ -53,16 +58,16 @@ defmodule Artifact.Config do
       _ -> nil
     end
   end
+
   defp do_get([], list_of_values) do
     Enum.reverse(list_of_values)
   end
+
   defp do_get([key|rest], list_of_values) do
     do_get(rest, [do_get(key)|list_of_values])
   end
 
-  def node_info do
-    GenServer.call(__MODULE__, :node_info)
-  end
+  def node_info, do: GenServer.call(__MODULE__, :node_info)
 
   # Behaviour Callbacks
 
@@ -72,36 +77,20 @@ defmodule Artifact.Config do
     {:reply, {:node_info, local_node, info}, state}
   end
 
-  def stop do
-    GenServer.call(__MODULE__, :stop)
-  end
+  def stop, do: GenServer.call(__MODULE__, :stop)
 
-  def get(key) do
-    GenServer.call(__MODULE__, {:get, key})
-  end
+  def get(key), do: GenServer.call(__MODULE__, {:get, key})
 
-  def handle_call(:stop, _from, state) do
-    {:stop, :normal, :stopped, state}
-  end
+  def handle_call(:stop, _from, state), do: {:stop, :normal, :stopped, state}
 
-  def handle_call({:get, key}, _from, state) do
-    get(key, state)
-  end
+  def handle_call({:get, key}, _from, state), do: get(key, state)
 
-  def handle_call(:node_info, _from, state) do
-    node_info(state)
-  end
+  def handle_call(:node_info, _from, state), do: node_info(state)
 
-  def handle_cast(_msg, state) do
-    super(_msg, state)
-  end
+  def handle_cast(_msg, state), do: super(_msg, state)
 
-  def handle_info(_msg, state) do
-    super(_msg, state)
-  end
+  def handle_info(_msg, state), do: super(_msg, state)
 
-  def code_change(_old, state, _extra) do
-    super(_old, state, _extra)
-  end
+  def code_change(_old, state, _extra), do: super(_old, state, _extra)
 
 end
