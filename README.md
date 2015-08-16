@@ -2,8 +2,8 @@
 
 # Artifact
 **I began rewriting Artifact in Elixir some time ago and it is not a complete
-  port of the Erlang code -- continue using Artifact in Erlang if you want
-  something running**
+port of the Erlang code -- continue using Artifact in Erlang if you want
+something running**
 
 ## Introduction
 
@@ -15,7 +15,8 @@ Elixir and has introduced several features that cause it to diverge
 significantly from it's initial implementation.
 
 Artifact is a super-high-speed distributed key value store, designed for
-applications with a large number of servers in a datacenter than need low-latency reads.
+applications with a large number of servers in a datacenter than need
+low-latency reads.
 
 
 ### Entirely Nonvolatile:
@@ -25,11 +26,13 @@ multiple machines, because it recovers from server crashes very fast (about
 ensured as long as n/2 + 1 machines stay online. (The data itself may be
 made available through a loop filesystem, and can be written to DETS or some
 other nonvolatile storage as well.)
+
 ### Low Latency
 Most writes happen in less than 50μs, most reads in less than 25μs.
+
 ### Consistency
 Artifact provides an slightly stronger consistency than dynamo -- all
-updates in RAMCloud are consistent, immediately visible, and durable.
+updates in Artifact are consistent, immediately visible, and durable.
 
 
 ## What does it do?
