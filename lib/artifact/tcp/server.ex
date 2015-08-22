@@ -6,7 +6,10 @@ defmodule Artifact.TCP.Server do
 
   # External APIs
   def start_link(module), do: start_link(module, [])
-  def start_link(module, args), do: start_link(module, args, Config.tcp_options)
+  def start_link(module, args) do
+    # We initialize our special options here
+    start_link(module, args, Application.get_env(:artifact, TCP))
+  end
   def start_link(module, args, option) do
     start_link({:local, __MODULE__}, module, args, option)
   end

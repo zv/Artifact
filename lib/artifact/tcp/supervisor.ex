@@ -3,7 +3,8 @@ defmodule Artifact.TCP.Supervisor do
   import Supervisor.Spec
 
   def start_link(name, module, args, option) do
-    Supervisor.start_link(name, __MODULE__, [name, module, args, option])
+    Supervisor.start_link(name, __MODULE__,
+                          [name, module, args, option])
   end
 
   def stop(name) do
