@@ -14,33 +14,30 @@ defmodule Artifact do
 
   use Behaviour
 
-  defmodule Data do
-    @typedoc """
-    This is a struct used to represent a piece of keyed data stored by an
-    Artifact node
-    """
-    @type vclock_node :: term
-    @type timestamp   :: integer
-    @type counter     :: integer
-    @type dot         :: {vclock_node, {counter, timestamp}}
-    @type vclock      :: [dot]
+  @typedoc """
+  This is a struct used to represent a piece of keyed data stored by an
+  Artifact node
+  """
+  @type vclock_node :: term
+  @type timestamp   :: integer
+  @type counter     :: integer
+  @type dot         :: {vclock_node, {counter, timestamp}}
+  @type vclock      :: [dot]
 
-    @type data :: %Data{key:           bitstring,
-                        bucket:        integer,
-                        last_modified: integer,
-                        vector_clocks: vclock,
-                        checksum:      binary,
-                        flags:         bitstring,
-                        value:         binary}
+  @type data :: record(:data,
+                       key:           bitstring,
+                       bucket:        integer,
+                       last_modified: integer,
+                       vector_clocks: vclock,
+                       checksum:      binary,
+                       flags:         bitstring,
+                       value:         binary)
 
-    defstruct key: nil,
-              bucket: nil,
-              last_modified: nil,
-              vector_clocks: nil,
-              checksum: nil,
-              flags: nil,
-              value: nil
-  end
+
+  require Record
+  Record.defrecord :data, [key: nil, bucket: nil, last_modified: nil,
+                           vector_clocks: nil, checksum: nil,
+                           flags: nil, value: nil]
 
   require Logger
   @doc """
@@ -48,7 +45,7 @@ defmodule Artifact do
 
   ## Examples
 
-      Artifact.error "oops"
+  Artifact.error "oops"
   """
   defmacro error(message), do: Logger.error(message)
 
@@ -57,7 +54,7 @@ defmodule Artifact do
 
   ## Examples
 
-      Artifact.warning "knob turned too far to the right"
+  Artifact.warning "knob turned too far to the right"
   """
   defmacro warning(message), do: Logger.warn(message)
 
@@ -66,7 +63,7 @@ defmodule Artifact do
 
   ## Examples
 
-      Artifact.info "My name is artifact"
+  Artifact.info "My name is artifact"
   """
   defmacro info(message), do: Logger.info(message)
 
@@ -75,7 +72,7 @@ defmodule Artifact do
 
   ## Examples
 
-      Artifact.debug "error?"
+  Artifact.debug "error?"
   """
   defmacro debug(message), do: Logger.debug(message)
 

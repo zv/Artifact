@@ -1,3 +1,6 @@
+#TODO: :port -> memcache_port
+#TODO: :max_processes
+#TODO: :max_restarts
 defmodule Artifact.Config do
   use GenServer
 
@@ -6,15 +9,12 @@ defmodule Artifact.Config do
   end
 
   def init(args) do
-    # Elixir has not ported a library wrapping OTP ETS, so we use the native
-    # interface here
     :ets.new(:config, [:set, :private, :named_table])
 
     # Load our keys
     Enum.each(args, fn({key, value}) ->
       :ets.insert(:config, {key, value})
-    end
-    )
+    end)
 
     {:ok, hostname} = case Keyword.get(args, :hostname) do
       nil      -> :inet.gethostname
@@ -78,19 +78,12 @@ defmodule Artifact.Config do
   end
 
   def stop, do: GenServer.call(__MODULE__, :stop)
-
   def get(key), do: GenServer.call(__MODULE__, {:get, key})
 
   def handle_call(:stop, _from, state), do: {:stop, :normal, :stopped, state}
-
   def handle_call({:get, key}, _from, state), do: get(key, state)
-
   def handle_call(:node_info, _from, state), do: node_info(state)
-
   def handle_cast(_msg, state), do: super(_msg, state)
-
   def handle_info(_msg, state), do: super(_msg, state)
-
   def code_change(_old, state, _extra), do: super(_old, state, _extra)
-
 end
