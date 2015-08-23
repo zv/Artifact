@@ -1,4 +1,13 @@
 defmodule Artifact.Sync do
+  @moduledoc """
+  Sync is responsible for comparing the contents of individual buckets,
+  reconciling changes, removing stale entries and synchronizing them if needed.
+  """
+
+  alias Artifact.Logging
+  alias Artifact.Store
+  alias Artifact.RPC
+
   def start_link() do
     :gen_fsm.start_link({:local, __MODULE__}, __MODULE__, [], _opts = [])
   end
@@ -12,7 +21,7 @@ defmodule Artifact.Sync do
       # Check if we've recieved a data record
       {:data, data} -> retrieve_data(node, t)
       :undefined ->
-        case(Artifact.RPC.get(node, metadata)) do
+        case(RPC.get(node, metadata)) do
           {:data, data} ->
             Store.put(data)
             retrieve_data(node, t)
@@ -36,21 +45,18 @@ defmodule Artifact.Sync do
     end
   end
 
-
   defp do_update_bucket(bucket) do
     {:nodes, nodes} = Hash.find_nodes(bucket)
-    localNode = Config.get(:node)
-    do_update_bucket(bucket, nodes -- [localNode])
+    do_update_bucket(bucket, nodes -- [Config.get(:node)])
   end
 
-
   defp do_delete_bucket([metadata | t]) do
-    Artifact.Store.delete(metadata)
+    Store.delete(metadata)
     do_delete_bucket(t)
   end
 
   defp do_delete_bucket(bucket) do
-    {:list_of_data, listOfData} = Artifact.Store.list(bucket)
+    {:list_of_data, listOfData} = Store.list(bucket)
     do_delete_bucket(listOfData)
   end
 
