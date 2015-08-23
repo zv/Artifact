@@ -72,7 +72,6 @@ defmodule Artifact.Sync do
     {:next_state, :ready, state, Config.timer}
   end
 
-
   def handle_event(:stop, _state_name, state_data), do: {:stop, :normal, stateData}
   def handle_sync_event(_event, _from, _state_name, state_data), do: {:next_state, :wait, stateData, @timeout}
   def handle_info(_info, _state_name, state_data), do: {:next_state, :ready, stateData, Config.timer}

@@ -52,7 +52,7 @@ defmodule Artifact.Mixfile do
         tables_count: 512,
 
         # Only ETS is a valid storage backend at this point
-        store: "ets",
+        store: :ets,
 
         # Only Memcache is a valid interface mechanism at this point
         interfaces: [
@@ -69,8 +69,10 @@ defmodule Artifact.Mixfile do
         # possible outputs of a hash function to individual nodes. MD5 is used
         # for testing, Murmur hashing should be used otherwise.
         hash_function: [
-          module: "erlang", fun: "md5"
-          # module: "ghelper", fun: "murmur32"
+          module: "erlang",
+          fun: "md5"
+          # module: "ghelper",
+          # fun: "murmur32"
         ],
 
       ]

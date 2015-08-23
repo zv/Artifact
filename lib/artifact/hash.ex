@@ -32,12 +32,6 @@ defmodule Artifact.Hash do
   @hash_function Application.get_env(:artifact, :hash_function)
   @hash_length 32
 
-  def crypto do
-    # apply(Crypto.hash(@hash_function, :module), Keyword.get(@hash_function, :fun), [hash])
-    # hash
-  end
-
-
   ## Hash a key w/ the module & function provided in the application environment (mix.exs)
   defp crypto(hash) do
     apply(Keyword.get(@hash_function, :module), Keyword.get(@hash_function, :fun), [hash])
