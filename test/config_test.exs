@@ -1,25 +1,18 @@
 Code.require_file "test_helper.exs", __DIR__
 
 defmodule ArtifactTest.Config do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   setup_all do
     IO.puts "Initializing Config Server..."
-    Artifact.Config.start_link([
-      hostname: 'localhost',
-      participants: 2,
-      buckets: 2048,
-      vnodes: 256,
-      rpc: [
-        port: 10070
-      ]
-    ])
-    { :ok, from_setup: :hello }
-  end
-
-  teardown_all do
-    Artifact.Config.stop()
-    :ok
+    {:ok, config} = Artifact.Config.start_link(
+      [hostname: 'localhost',
+       participants: 2,
+       buckets: 2048,
+       vnodes: 256,
+       rpc: [port: 10070]]
+    )
+    { :ok, config: config }
   end
 
   test "got Node information config" do
