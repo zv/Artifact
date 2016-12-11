@@ -5,62 +5,80 @@ defmodule Artifact.Config do
   use GenServer
 
   def start_link(args) do
-    GenServer.start_link({:local, __MODULE__}, __MODULE__, args, _options = [])
+    GenServer.start_link(__MODULE__, {:ok, args}, name: __MODULE__)
   end
 
-  def init(args) do
-    :ets.new(:config, [:set, :private, :named_table])
+  def init({:ok, environment}) do
+    {:ok, agent} = Agent.start_link fn -> %{} end
 
-    # Load our keys
-    Enum.each(args, fn({key, value}) ->
-      :ets.insert(:config, {key, value})
+    # Load our keys into the agent
+    Enum.each(environment, fn({key, value}) ->
+      Agent.update(agent, fn map -> Map.put(map, key, process(key, environment)) end)
     end)
 
-    {:ok, hostname} = case Keyword.get(args, :hostname) do
-      nil      -> :inet.gethostname
-      hostname -> {:ok, hostname}
-    end
+    # TODO: hack to get the node info in there
+    Agent.update(agent, fn map -> Map.put(map, :node, process(:node, environment)) end)
 
-    {:ok, address} = :inet.getaddr(hostname, :inet)
-    port = Keyword.get(args, :rpc) |> Keyword.get(:port)
-    :ets.insert :config, {:node, {address, port}}
-
-    # Total buckets given by 2 ^ (log(buckets) / log(2))
-    :ets.insert :config, {:buckets, Keyword.get(args, :buckets)}
-
-    {:ok, []}
+    {:ok, %{agent: agent}}
   end
 
-  def terminate(_reason, _state), do: :ets.delete(:config)
-
   @doc """
-  Specifies the daemon timeout window used by RPC
+  Corrects or verifies configuration values
   """
-  @daemon_timeout 3000
-  @daemon_timer 1000
-  def timer, do: @daemon_timer
-  def timeout, do: @daemon_timeout
+  def process(:quorum, envs) do
+    {n, r, w} = quorum = envs[:quorum]
+
+    # Check our quorum parameters
+    if (r + w > n) do :ok
+    else exit("The quorum is incorrectly configured, verify that R + W > N")
+    end
+
+    if (w > n / 2) do :ok
+    else exit("The quorum is incorrectly configured, verify that W > N / 2")
+    end
+
+    quorum
+  end
+
+  def process(:buckets, envs) do
+    :math.pow(2, trunc(:math.log2(envs[:buckets])))
+  end
+
+  def process(:node, envs) do
+    # if the hostname isn't specified, rely on the network to fetch it
+    {:ok, hostname} = case Keyword.get(envs, :hostname) do
+                        nil      -> :inet.gethostname
+                        hostname -> {:ok, hostname}
+                      end
+    {:ok, address} = :inet.getaddr(hostname, :inet)
+    port = Keyword.get(envs, :rpc) |> Keyword.get(:port)
+
+    {address, port}
+  end
+
+  def process(key, envs), do: envs[key]
+
+  def terminate(reason, %{agent: agent}) do
+    Agent.stop(agent)
+  end
 
 
   @doc """
   Derive the current values of configuration parameters
   """
   @spec get(nonempty_list(binary()), tuple()) :: tuple()
-  def get(keys, state) when is_list(keys) do
-    {:reply, do_get(keys, []), state}
+  def get(keys, state = %{agent: agent}) when is_list(keys) do
+    {:reply, do_get(keys, agent), state}
   end
 
-  def get(key, state), do: {:reply, do_get(key), state}
+  def get(key, state = %{agent: agent}), do: {:reply, do_get(key, agent), state}
 
-  defp do_get(key) do
-    case :ets.lookup(:config, key) do
-      [{^key,value} | _ ] -> value
-      _ -> nil
-    end
+  defp do_get(keys, agent) when is_list(keys) do
+    Enum.map(keys, fn key -> do_get(key, agent) end)
   end
 
-  defp do_get([], list_of_values) do
-    Enum.reverse(list_of_values)
+  defp do_get(key, agent) do
+    Agent.get(agent, fn map -> map[key] end)
   end
 
   def node_info(state = %{agent: agent}) do

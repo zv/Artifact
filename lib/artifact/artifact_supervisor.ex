@@ -5,7 +5,6 @@ defmodule Artifact.Supervisor do
 
   def init(:ok) do
     tree = [
-      worker(Artifact.Config, [[name: Config]]),
       worker(Artifact.Logging, [[name: Logging]]),
       worker(Artifact.Hash, [[name: Hash]]),
       worker(Artifact.Store, [[name: Store]]),
@@ -15,6 +14,7 @@ defmodule Artifact.Supervisor do
       worker(Artifact.Membership, [[name: Membership]]),
       worker(Artifact.RPC, [[name: RPC]]),
       worker(Artifact.Memcache, [[name: Memcache]])
+      worker(Artifact.Config, [Application.get_all_env(:artifact)]),
     ]
     supervise(tree, strategy: :one_for_one)
   end
