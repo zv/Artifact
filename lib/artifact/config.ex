@@ -63,27 +63,23 @@ defmodule Artifact.Config do
     Enum.reverse(list_of_values)
   end
 
-  defp do_get([key|rest], list_of_values) do
-    do_get(rest, [do_get(key)|list_of_values])
-  end
-
-  def node_info, do: GenServer.call(__MODULE__, :node_info)
-
-  # Behaviour Callbacks
-
-  def node_info(state) do
-    [local_node, vnodes] = do_get([:node, :vnodes], [])
+  def node_info(state = %{agent: agent}) do
+    [local_node, vnodes] = do_get([:node, :vnodes], agent)
     info = [{:vnodes, vnodes}]
     {:reply, {:node_info, local_node, info}, state}
   end
 
-  def stop, do: GenServer.call(__MODULE__, :stop)
+  def stop do
+    GenServer.call(__MODULE__, :stop)
+  end
   def get(key), do: GenServer.call(__MODULE__, {:get, key})
+  def node_info, do: GenServer.call(__MODULE__, :node_info)
 
+  # Behaviour Callbacks
   def handle_call(:stop, _from, state), do: {:stop, :normal, :stopped, state}
   def handle_call({:get, key}, _from, state), do: get(key, state)
   def handle_call(:node_info, _from, state), do: node_info(state)
-  def handle_cast(_msg, state), do: super(_msg, state)
-  def handle_info(_msg, state), do: super(_msg, state)
-  def code_change(_old, state, _extra), do: super(_old, state, _extra)
+  def handle_cast(msg, state), do: super(msg, state)
+  def handle_info(msg, state), do: super(msg, state)
+  def code_change(old, state, extra), do: super(old, state, extra)
 end
