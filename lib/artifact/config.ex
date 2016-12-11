@@ -1,7 +1,7 @@
-#TODO: :port -> memcache_port
-#TODO: :max_processes
-#TODO: :max_restarts
 defmodule Artifact.Config do
+  @moduledoc """
+  Loads, processes and sanitizes application environment data.
+  """
   use GenServer
 
   def start_link(args) do
