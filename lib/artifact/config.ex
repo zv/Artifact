@@ -23,8 +23,12 @@ defmodule Artifact.Config do
   end
 
   @doc """
-  Corrects or verifies configuration values
+  Process verifies, corrects or modifies Mix environment keys that are loaded
+  into Config on `init` or returns the configuration value if no special
+  processing is required.
   """
+  def process(key, envs), do: envs[key]
+
   def process(:quorum, envs) do
     {n, r, w} = quorum = envs[:quorum]
 
@@ -39,6 +43,7 @@ defmodule Artifact.Config do
 
     quorum
   end
+
 
   def process(:buckets, envs) do
     :math.pow(2, trunc(:math.log2(envs[:buckets])))
@@ -56,15 +61,14 @@ defmodule Artifact.Config do
     {address, port}
   end
 
-  def process(key, envs), do: envs[key]
-
-  def terminate(reason, %{agent: agent}) do
-    Agent.stop(agent)
-  end
-
 
   @doc """
-  Derive the current values of configuration parameters
+  Fetches a configuration parameter from the agent process or ETS.
+
+  ## Examples
+
+  iex> Artifact.Config.get :vnodes
+  2048
   """
   @spec get(nonempty_list(binary()), tuple()) :: tuple()
   def get(keys, state = %{agent: agent}) when is_list(keys) do
@@ -76,24 +80,29 @@ defmodule Artifact.Config do
   defp do_get(keys, agent) when is_list(keys) do
     Enum.map(keys, fn key -> do_get(key, agent) end)
   end
+  defp do_get(key, agent), do: Agent.get(agent, fn map -> map[key] end)
 
-  defp do_get(key, agent) do
-    Agent.get(agent, fn map -> map[key] end)
-  end
+  @doc """
+  Reply with an aggregate of local node configured and derived system information.
+  Because some information cannot be predicted from the configuration _alone_
+  (hostname, etc), you can also use this to verify appropriate settings.
 
+  ## Examples
+  iex> Artifact.config.node_info
+  {:node_info, {{127,0,0,1}, 10070}, [{:vnodes, 256}]}
+  """
   def node_info(state = %{agent: agent}) do
     [local_node, vnodes] = do_get([:node, :vnodes], agent)
     info = [{:vnodes, vnodes}]
     {:reply, {:node_info, local_node, info}, state}
   end
-
-  def stop do
-    GenServer.call(__MODULE__, :stop)
-  end
-  def get(key), do: GenServer.call(__MODULE__, {:get, key})
   def node_info, do: GenServer.call(__MODULE__, :node_info)
 
-  # Behaviour Callbacks
+  def get(key), do: GenServer.call(__MODULE__, {:get, key})
+
+  # OTP Callbacks
+  def terminate(reason, %{agent: agent}), do: Agent.stop(agent)
+  def stop, do: GenServer.call(__MODULE__, :stop)
   def handle_call(:stop, _from, state), do: {:stop, :normal, :stopped, state}
   def handle_call({:get, key}, _from, state), do: get(key, state)
   def handle_call(:node_info, _from, state), do: node_info(state)
