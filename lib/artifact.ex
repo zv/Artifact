@@ -76,9 +76,5 @@ defmodule Artifact do
   """
   defmacro debug(message), do: Logger.debug(message)
 
-  def start(_type , _args) do
-    args = Application.get_all_env(:artifact)
-    Artifact.Supervisor.start_link(args)
-  end
-
+  def start(_type , _args), do: Artifact.Supervisor.start_link()
 end
