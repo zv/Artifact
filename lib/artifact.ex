@@ -11,8 +11,8 @@ defmodule Artifact do
 
   This is the main module in the Artifact repository.
   """
-
   use Behaviour
+  require Record
 
   @typedoc """
   This is a struct used to represent a piece of keyed data stored by an
@@ -23,7 +23,6 @@ defmodule Artifact do
   @type counter     :: integer
   @type dot         :: {vclock_node, {counter, timestamp}}
   @type vclock      :: [dot]
-
   @type data :: record(:data,
                        key:           bitstring,
                        bucket:        integer,
@@ -32,49 +31,9 @@ defmodule Artifact do
                        checksum:      binary,
                        flags:         bitstring,
                        value:         binary)
-
-
-  require Record
+  # A record stores metadata about a particular value and where it is stored.
   Record.defrecord :data, [key: nil, bucket: nil, last_modified: nil,
-                           vector_clocks: nil, checksum: nil,
-                           flags: nil, value: nil]
-
-  require Logger
-  @doc """
-  Logs an error
-
-  ## Examples
-
-  Artifact.error "oops"
-  """
-  defmacro error(message), do: Logger.error(message)
-
-  @doc """
-  Logs a warning.
-
-  ## Examples
-
-  Artifact.warning "knob turned too far to the right"
-  """
-  defmacro warning(message), do: Logger.warn(message)
-
-  @doc """
-  Logs an informational message.
-
-  ## Examples
-
-  Artifact.info "My name is artifact"
-  """
-  defmacro info(message), do: Logger.info(message)
-
-  @doc """
-  Logs a debug message
-
-  ## Examples
-
-  Artifact.debug "error?"
-  """
-  defmacro debug(message), do: Logger.debug(message)
+                           vector_clocks: nil, checksum: nil, flags: nil, value: nil]
 
   def start(_type , _args), do: Artifact.Supervisor.start_link()
 end
