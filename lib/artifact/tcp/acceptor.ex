@@ -1,7 +1,7 @@
 defmodule Artifact.TCP.Acceptor do
 
   def start_link({dest, name}, socket, state, monitor_name, module, option) do
-    pid = Process.spawn(__MODULE__, init, [socket, state, monitor_name, module, option], [:link])
+    pid = Process.spawn(__MODULE__, :init, [socket, state, monitor_name, module, option], [:link])
     Process.register(name, pid)
     {:ok, pid}
   end
@@ -15,11 +15,11 @@ defmodule Artifact.TCP.Acceptor do
     case :gen_tcp.accept(socket, option.accept_timeout) do
       {:ok, listen_socket} ->
         TCP.Monitor.increment(monitor_name, self)
-        recv(:proplists.get_value(active, option.listen), listen_socket, state, module, option)
+        recv(:proplists.get_value(:active, option.listen), listen_socket, state, module, option)
         TCP.Monitor.decrement(monitor_name, self)
         :gen_tcp.close(listen_socket)
       {:error, msg} ->
-        Artifact.Logging.warning("accept #{inspect mod} msg: #{inspect msg}")
+        Artifact.Logging.warning("accept #{inspect module} msg: #{inspect msg}")
         :timer.sleep(option.accept_error_sleep_time)
     end
     accept(socket, state, monitor_name, module, option)
@@ -27,7 +27,7 @@ defmodule Artifact.TCP.Acceptor do
 
 
   defp recv(false, socket, state, mod, option) do
-    case(:gen_tcp.recv(socket, option.recv_length, %Option{}.recv_timeout)) do
+    case(:gen_tcp.recv(socket, option.recv_length, {}.recv_timeout)) do
       {:ok, data}       -> call_mod(false, socket, data, state, mod, option)
       {:error, :closed} -> :tcp_closed
       {:error, reason} ->
@@ -40,8 +40,8 @@ defmodule Artifact.TCP.Acceptor do
     receive() do
       {:tcp, socket, data} -> call_mod(true, socket, data, state, mod, option)
       {:tcp_closed, _socket} -> :tcp_closed
-      error ->
-        Artifact.logging("recv(#{inspect mod}) #{inspect reason}")
+      {:error, msg} ->
+        Artifact.logging("recv(#{inspect mod}) #{inspect msg}")
         :error
     after option.recv_timeout -> :tcp_timeout
     end

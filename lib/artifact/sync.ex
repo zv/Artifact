@@ -78,10 +78,10 @@ defmodule Artifact.Sync do
     {:next_state, :ready, state, Config.timer}
   end
 
-  def handle_event(:stop, _state_name, state_data), do: {:stop, :normal, stateData}
-  def handle_sync_event(_event, _from, _state_name, state_data), do: {:next_state, :wait, stateData, @timeout}
-  def handle_info(_info, _state_name, state_data), do: {:next_state, :ready, stateData, Config.timer}
-  def code_change(_oldVsn, _state_name, state_data, _extra), do: {:ok, :ready, stateData}
+  def handle_event(:stop, _state_name, state_data), do: {:stop, :normal, state_data}
+  def handle_sync_event(_event, _from, _state_name, state_data), do: {:next_state, :wait, state_data, @timeout}
+  def handle_info(_info, _state_name, state_data), do: {:next_state, :ready, state_data, Config.timer}
+  def code_change(_oldVsn, _state_name, state_data, _extra), do: {:ok, :ready, state_data}
   def stop(), do: :gen_fsm.send_all_state_event(__MODULE__, :stop)
   def update_bucket(bucket), do: :gen_fsm.send_event(__MODULE__, {:update_bucket, bucket})
   def delete_bucket(bucket), do: :gen_fsm.send_event(__MODULE__, {:delete_bucket, bucket})

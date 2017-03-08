@@ -1,15 +1,19 @@
-defmodule RPC do
+defmodule Artifact.RPC do
+  import Record
   @behaviour TCP
+
+  Record.defrecord :data, [key: nil, bucket: nil, last_modified: nil,
+                           vector_clocks: nil, checksum: nil,
+                           flags: nil, value: nil]
 
   def start_link do
     TCP.Supervisor.start_link(
       {:local, __MODULE__},
       __MODULE__,
       [],
-      record(:tcp_option,
-             [:binary, {:packet, 4}, {:active, true}, {:reuseaddr, true}],
-             port: Config.get(:rpc_port),
-             max_processes: Config.get(:rpc_max_processes))
+      {[:binary, {:packet, 4}, {:active, true}, {:reuseaddr, true}],
+       port: Config.get(:rpc_port),
+       max_processes: Config.get(:rpc_max_processes)}
     )
   end
 
@@ -20,17 +24,17 @@ defmodule RPC do
 
   @type state :: any
   @typep socket :: state
-  @spec dispatch(state,
-                 :node_info |
-                 :node_list |
-                 { :list, node } |
-                 { :get, record(:data) } |
-                 { :delete, record(data) } |
-                 { :check_node, node } |
-                 { :route, any } |
-                 { :put, any } |
-                 term,
-                 state) :: reply
+  # @spec dispatch(state,
+  #                :node_info |
+  #                :node_list |
+  #                { :list, node } |
+  #                { :get, record(:data) } |
+  #                { :delete, record(:data) } |
+  #                { :check_node, node } |
+  #                { :route, any } |
+  #                { :put, any } |
+  #                term,
+  #                state) :: reply
   @doc """
   Dispatch a procedure call based on the request type encoded in the term
   """
@@ -42,7 +46,7 @@ defmodule RPC do
   defp dispatch(_socket, {:check_node, node}, state), do: reply(Membership.check_node(node), state)
   defp dispatch(_socket, {:route, req}, state), do: reply(Coordinator.route(req), state)
   defp dispatch(_socket, _, state), do: reply({:error, :enotsup}, state)
-  defp dispatch(_socket, {:put, data}, state) when is_record(data, :data) do
+  defp dispatch(_socket, {:put, data}, state) when Record.is_record(data, :data) do
     reply(Store.put(data), state)
   end
 
@@ -55,6 +59,26 @@ defmodule RPC do
       {:error, reason}       -> {:error, reason}
     after
       @timeout -> {:error, :timeout}
+    end
+  end
+
+  defp do_request(node, message) do
+    case Connection.lease(node, __MODULE__) do
+      {:ok, socket} ->
+        case :gen_tcp.send(socket, :erlang.term_to_binary(message)) do
+          :ok -> case recv_response(socket) do
+                   {:ok, result} ->
+                     Connection.return(socket)
+                     {:ok, result}
+                   {:error, reason} ->
+                     Connection.close(socket)
+                     {:error, reason}
+                 end
+          {:error, reason} ->
+            Connection.close(socket)
+            {:error, reason}
+        end
+      {:error, reason} -> {:error, reason}
     end
   end
 

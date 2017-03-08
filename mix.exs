@@ -5,7 +5,7 @@ defmodule Artifact.Mixfile do
   def project do
     [app: :artifact,
      version: "0.0.1",
-     elixir: "1.2.2",
+     # elixir: "1.2.2",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      deps: deps,

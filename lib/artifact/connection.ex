@@ -53,18 +53,18 @@ defmodule Artifact.Connection do
     end
   end
 
-  defp do_acquire(node, client, opts, [{node, available, socket}|t], acc) when is_pid(client) do
+  defp do_acquire(node, client, opts, [{node, available, socket}|rest], acc) when is_pid(client) do
     case :gen_tcp.controlling_process(socket, client) do
       :ok ->
-        connection_pool = {_, sock, _ } = push_new_connect(socket, opts, node, acc, rest)
+        connection_pool = {_, sock, _ } = push_new_connection(socket, opts, node, acc, rest)
         flush(sock)
         connection_pool
       {:error, msg} -> {:error, msg, acc ++ rest}
     end
   end
 
-  defp do_acquire(node, client, opts, [c|t], acc) do
-    do_acquire(node, client, opts, rest, [c|t])
+  defp do_acquire(node, client, opts, [c|rest], acc) do
+    do_acquire(node, client, opts, rest, [c|acc])
   end
 
   defp push_new_connection(socket, opts, node, connections, rest \\ []) do
@@ -81,7 +81,7 @@ defmodule Artifact.Connection do
   defp flush(socket) do
     receive do
       {:tcp, socket, _binary} -> flush(socket)
-    after 0 -> ok
+    after 0 -> :ok
     end
   end
 
@@ -107,25 +107,25 @@ defmodule Artifact.Connection do
   defp do_return(_, [], acc), do: {:error, :enoent, acc}
   defp do_return(socket, [{node, _, socket}|rest], acc) do
     connections = [
-      %{node: node, available: avail, socket: socket} |
+      %{node: node, available: true, socket: socket} |
       Enum.reverse(connections)
     ] ++ rest
 
     {:ok, connections}
   end
-  defp do_return(socket, [c|t], acc), do: do_return(socket, rest, [c|acc])
+  defp do_return(socket, [c|t], acc), do: do_return(socket, t, [c|acc])
 
   def return(socket, connections) do
     case do_return(socket, connections, []) do
       {:ok, conns} -> {:reply, :ok, lru(conns)}
       {:error, msg, conns} ->
-        Artifact.Logging.warn "return (#{inspect socket} error: #{inspect reason}"
+        Artifact.Logging.warn "return (#{inspect socket} error: #{inspect msg}"
     end
   end
 
 
   defp do_close(_socket, [], acc), do: {:error, :enoent, acc}
-  defp do_close(socket, [c|t], acc), do: do_close(socket, rest, [c|acc])
+  defp do_close(socket, [c|t], acc), do: do_close(socket, t, [c|acc])
   defp do_close(socket, [{_, _, socket}|rest], acc) do
     :gen_tcp.close(socket)
     {:ok, Enum.reverse(acc) ++ rest}
@@ -165,7 +165,8 @@ defmodule Artifact.Connection do
       :ok ->
         :gen_server.call(__MODULE__, {:return, socket})
       {:error, reason} ->
-        Artifact.Logging.warn(:io_lib.format("return(~p) ~p", [socket, {error, reason}]))
+        # TODO FUQED
+        # Artifact.Logging.warn(:io_lib.format("return(~p) ~p", [socket, {error, reason}]))
         :gen_server.call(__MODULE__, {:close, socket})
         {:error, reason}
     end
@@ -174,7 +175,7 @@ defmodule Artifact.Connection do
   # Callbacks
 
   def handle_call(:stop, _from, state), do: {:stop, :normal, :stopped, state}
-  def handle_call({:lease, node, pid, opts}, _from, state), do: lease(node, pid, opts, state)
+  def handle_call({:lease, node, pid, opts}, _from, state), do: acquire(node, pid, opts, state)
   def handle_call({:return, socket}, _from, state), do: return(socket, state)
   def handle_call({:close, socket}, _from, state), do: close(socket, state)
   def handle_call(:connections, _from, state), do: connections(state)
