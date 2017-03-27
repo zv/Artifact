@@ -33,7 +33,13 @@ defmodule Artifact.Connection do
     case :gen_tcp.connect(address, port, @connect_setopts, @tcp_timeout) do
       {:ok, socket} ->
         case :gen_tcp.controlling_process(socket, client) do
-          :ok -> push_new_connection(socket, opts, node, acc)
+          :ok ->
+            :inet.setopts(socket, opts)
+            conns = [
+              %{node: node, available: false, socket: socket} |
+              Enum.reverse(acc)
+            ]
+            {:ok, socket, conns}
           {:error, msg} -> {:error, msg, acc}
         end
       {:error, msg} -> {:error, msg, acc}
@@ -43,27 +49,19 @@ defmodule Artifact.Connection do
   defp do_acquire(node, client, opts, [%{node: node, available: true, socket: socket}|rest], acc)  do
     case :gen_tcp.controlling_process(socket, client) do
       :ok ->
-        :ok = :inet.setopts(socket, opts)
-        connection_pool = {_, sock, _ } = push_new_connection(socket, opts, node, acc, rest)
-        flush(sock)
-        {:ok, socket, connection_pool}
+        :inet.setopts(socket, opts)
+        conns = [
+          %{node: node, available: false, socket: socket} |
+          Enum.reverse(acc)
+        ] ++ rest
+        flush(socket)
+        {:ok, socket, conns}
       {:error, msg} -> {:error, msg, acc ++ rest}
     end
   end
 
   defp do_acquire(node, client, opts, [c|rest], acc) do
     do_acquire(node, client, opts, rest, [c|acc])
-  end
-
-  defp push_new_connection(socket, opts, node, connections, rest \\ []) do
-    {
-      :inet.setopts(socket, opts),
-      socket,
-      [
-        %{node: node, available: false, socket: socket} |
-        Enum.reverse(connections)
-      ]
-    }
   end
 
   defp flush(socket) do
@@ -76,28 +74,27 @@ defmodule Artifact.Connection do
   # Fetch our least recently used entry, closing sockets that are already in use.
   defp lru(0, rest, acc), do: Enum.reverse(rest) ++ acc
   defp lru(_n, [], acc), do: acc
-  defp lru(n, [c = {_, false, _}|rest], acc), do: lru(n, rest, [c|acc])
-  defp lru(n, [{_, true, socket}|rest], acc) do
+  defp lru(n, [%{node: _, available: true, socket: socket}|rest], acc) do
     :gen_tcp.close(socket)
     lru(n - 1, rest, acc)
   end
+  defp lru(n, [c = %{node: _, available: false, socket: _}|rest], acc), do: lru(n, rest, [c|acc])
   defp lru(connections) do
     max = Artifact.Config.get(:max_connections)
     len = length(connections)
-    if  len > max do
+    if len > max do
       lru(len - max, Enum.reverse(connections), [])
     else
       connections
     end
   end
 
-
   defp do_return(_, [], acc), do: {:error, :enoent, acc}
   defp do_return(socket, [%{node: node, available: _avail, socket: socket} | rest], acc) do
     connections = [
       %{node: node, available: true, socket: socket} |
       Enum.reverse(acc)
-    ] ++ rest # LRU
+    ] ++ rest
 
     {:ok, connections}
   end
@@ -105,8 +102,7 @@ defmodule Artifact.Connection do
 
   def return(socket, connections) do
     case do_return(socket, connections, []) do
-      {:ok, conns} ->
-        {:reply, :ok, lru(conns)}
+      {:ok, conns} -> {:reply, :ok, lru(conns)}
       {:error, msg, conns} ->
         # TODO: Logging.warn
         IO.puts "return/2 (#{inspect socket} error: #{inspect msg}"

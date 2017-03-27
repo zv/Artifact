@@ -74,8 +74,8 @@ defmodule ArtifactTest.Connection do
     {:ok, connections} = Connection.connections()
     assert length(connections) == 2
 
-    # Reuse check
     {:ok, socket3} = Connection.acquire(Artifact.TestMacros.node2(), self(), [{:active, :true}, {:packet, 4}])
+    # Reuse check
     #assert socket == socket3
 
     :ok = Connection.close(socket3)
