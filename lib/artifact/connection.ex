@@ -1,33 +1,21 @@
 defmodule Artifact.Connection do
   use GenServer
 
-  @connect_setopts [:binary,
-                    {:active, :true},
-                    {:packet, 4},
-                    {:reuseaddr, true}]
-
-  @tcp_timeout 100
+  @connect_setopts [:binary, {:active, :true}, {:packet, 4}, {:reuseaddr, true}]
+  @tcp_timeout 5000
 
 
-  def start_link do
-    GenServer.start_link({:local, __MODULE__}, __MODULE__, [], [])
-  end
-
-  def init(_args) do
-    {:ok, []}
-  end
-
-  def terminate(_reason, _state) do
-    :ok
-  end
+  def start_link, do: GenServer.start_link(__MODULE__, :ok, name: __MODULE__)
+  def init(_args), do: {:ok, []}
+  def terminate(_reason, _state), do: :ok
 
 
   @doc """
-  acquire supplies the caller with a socket from a connection pool that may be
+  Supplies the caller with a socket from a connection pool that may be
   used to issue API calls that they can later close & return.
   """
   def acquire(node, client, opts, pool) do
-    case do_acquire(node, client, opts, connections, []) do
+    case do_acquire(node, client, opts, pool, []) do
       {:ok, socket, conns} ->
         conns = lru(conns)
         {:reply, {:ok, socket}, conns}
@@ -38,9 +26,8 @@ defmodule Artifact.Connection do
     end
   end
 
-
   # These functions are the core of the connection pooling logic. We basically
-  # just pop an entry off the LRU cache and go from there.
+  # just pop an entry off the LRU cache and lease that socket.
   defp do_acquire({address, port}, client, opts, [], acc) when is_pid(client) do
     # Fetch the
     case :gen_tcp.connect(address, port, @connect_setopts, @tcp_timeout) do
@@ -53,12 +40,13 @@ defmodule Artifact.Connection do
     end
   end
 
-  defp do_acquire(node, client, opts, [{node, available, socket}|rest], acc) when is_pid(client) do
+  defp do_acquire(node, client, opts, [%{node: node, available: true, socket: socket}|rest], acc)  do
     case :gen_tcp.controlling_process(socket, client) do
       :ok ->
+        :ok = :inet.setopts(socket, opts)
         connection_pool = {_, sock, _ } = push_new_connection(socket, opts, node, acc, rest)
         flush(sock)
-        connection_pool
+        {:ok, socket, connection_pool}
       {:error, msg} -> {:error, msg, acc ++ rest}
     end
   end
@@ -105,11 +93,11 @@ defmodule Artifact.Connection do
 
 
   defp do_return(_, [], acc), do: {:error, :enoent, acc}
-  defp do_return(socket, [{node, _, socket}|rest], acc) do
+  defp do_return(socket, [%{node: node, available: _avail, socket: socket} | rest], acc) do
     connections = [
       %{node: node, available: true, socket: socket} |
-      Enum.reverse(connections)
-    ] ++ rest
+      Enum.reverse(acc)
+    ] ++ rest # LRU
 
     {:ok, connections}
   end
@@ -117,19 +105,22 @@ defmodule Artifact.Connection do
 
   def return(socket, connections) do
     case do_return(socket, connections, []) do
-      {:ok, conns} -> {:reply, :ok, lru(conns)}
+      {:ok, conns} ->
+        {:reply, :ok, lru(conns)}
       {:error, msg, conns} ->
-        Artifact.Logging.warn "return (#{inspect socket} error: #{inspect msg}"
+        # TODO: Logging.warn
+        IO.puts "return/2 (#{inspect socket} error: #{inspect msg}"
+        {:reply, {:error, msg}, conns}
     end
   end
 
 
   defp do_close(_socket, [], acc), do: {:error, :enoent, acc}
-  defp do_close(socket, [c|t], acc), do: do_close(socket, t, [c|acc])
-  defp do_close(socket, [{_, _, socket}|rest], acc) do
+  defp do_close(socket, [%{node: _, available: _, socket: socket}|rest], acc) do
     :gen_tcp.close(socket)
     {:ok, Enum.reverse(acc) ++ rest}
   end
+  defp do_close(socket, [c|t], acc), do: do_close(socket, t, [c|acc])
 
   def close(socket, connections) do
     case do_close(socket, connections, []) do
@@ -139,18 +130,19 @@ defmodule Artifact.Connection do
   end
 
 
-  def connections(connections), do: {:reply, {:ok, connections}, connections}
-  def connections(), do: :gen_server.call(__MODULE__, :connections)
-  def close(socket), do: :gen_server.call(__MODULE__, {:close, socket})
+  def connections(conns), do: {:reply, {:ok, conns}, conns}
+  def connections(), do: GenServer.call(__MODULE__, :connections)
 
-  def stop(), do: :gen_server.call(__MODULE__, stop)
+  def close(socket), do: GenServer.call(__MODULE__, {:close, socket})
 
-  def lease(node, pid) when is_pid(pid) do
-    :gen_server.call(__MODULE__, {:lease, node, pid, []})
+  def stop(), do: GenServer.call(__MODULE__, :stop)
+
+  def acquire(node, pid) when is_pid(pid) do
+    GenServer.call(__MODULE__, {:acquire, node, pid, []})
   end
 
-  def lease(node, pid, opts) when is_pid(pid) do
-    :gen_server.call(__MODULE__, {:lease, node, pid, opts})
+  def acquire(node, pid, opts) when is_pid(pid) do
+    GenServer.call(__MODULE__, {:acquire, node, pid, opts})
   end
 
   defp reset_controlling_process(socket) do
@@ -163,19 +155,19 @@ defmodule Artifact.Connection do
   def return(socket) when is_port(socket) do
     case reset_controlling_process(socket) do
       :ok ->
-        :gen_server.call(__MODULE__, {:return, socket})
-      {:error, reason} ->
+        GenServer.call(__MODULE__, {:return, socket})
+      {:error, msg} ->
         # TODO FUQED
         # Artifact.Logging.warn(:io_lib.format("return(~p) ~p", [socket, {error, reason}]))
-        :gen_server.call(__MODULE__, {:close, socket})
-        {:error, reason}
+        GenServer.call(__MODULE__, {:close, socket})
+        {:error, msg}
     end
   end
 
   # Callbacks
 
   def handle_call(:stop, _from, state), do: {:stop, :normal, :stopped, state}
-  def handle_call({:lease, node, pid, opts}, _from, state), do: acquire(node, pid, opts, state)
+  def handle_call({:acquire, node, pid, opts}, _from, state), do: acquire(node, pid, opts, state)
   def handle_call({:return, socket}, _from, state), do: return(socket, state)
   def handle_call({:close, socket}, _from, state), do: close(socket, state)
   def handle_call(:connections, _from, state), do: connections(state)
