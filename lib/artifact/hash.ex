@@ -74,11 +74,8 @@ defmodule Artifact.Hash do
     :ok
   end
 
-  defp bucket_members(_key_hash, _n, i, nodes) when i > 0 do
-    { :nodes, Enum.reverse(nodes) }
-  end
   ## List nodes whose mapped keyspace falls on this key_hash
-  defp bucket_members(_key_hash, _n, i, nodes) when i == 0 do
+  defp bucket_members(_key_hash, _n, 0, nodes) do
     {:nodes, Enum.reverse(nodes)}
   end
   defp bucket_members(key_hash, n, i, nodes) do
@@ -86,7 +83,7 @@ defmodule Artifact.Hash do
       :"$end_of_table" -> :ets.first(:vnode_manifest)
       other           -> other
     end
-    [{_k,node} | _] = :ets.lookup(:vnode_manifest, node_hash)
+    [{_k, node} | _] = :ets.lookup(:vnode_manifest, node_hash)
     new_nodes = case Enum.member?(nodes, node) do
       true  -> nodes
       false -> [ node | nodes ]
@@ -94,7 +91,7 @@ defmodule Artifact.Hash do
 
     case length(new_nodes) do
       ^n  -> {:nodes, Enum.reverse(new_nodes)}
-      _   -> bucket_members(key_hash, n, i-1, new_nodes)
+      _   -> bucket_members(node_hash, n, i-1, new_nodes)
     end
   end
 
@@ -134,19 +131,23 @@ defmodule Artifact.Hash do
     {:nodes, new_nodes} =
       bucket_members(bucket * circumference, n, max_search, [])
 
+    # Buckets are numbered 1-Circumference, each should be assigned a particular
+    # node which they communicate with, whenever a new bucket comes online, we
+    # update our ets table with the appropriate information
     case :ets.lookup(:buckets, bucket) do
       # If we found a preexising bucket, we can safely skip this.
       [ { ^bucket, ^new_nodes } ] -> update_buckets(bucket - 1, node, circumference,
                                                    n, max_search, reorganized_buckets )
-      # Otherwise we have to insert a new bucket
       old_bucket ->
         :ets.insert(:buckets, {bucket, new_nodes})
         new_replica = Enum.find_index(new_nodes, fn(n) -> n == node end)
         old_replica = case old_bucket do
-          [{bucket, old_nodes}] -> Enum.find_index(old_nodes, fn(n) -> n == node end)
+          [{_bucket, old_nodes}] -> Enum.find_index(old_nodes, fn(n) -> n == node end)
           []                    -> :undefined
         end
 
+        # why did I choose to append "_n" here - I don't remember! Maybe you can
+        # remind me.
         reorganized_buckets_n = if new_replica == old_replica do
           reorganized_buckets
         else
@@ -162,13 +163,13 @@ defmodule Artifact.Hash do
     [node, n, buckets_count] = Config.get [:node, :n, :buckets]
 
     circumference    = ring_circumference(buckets_count)
-    number_of_nodes  = :ets.info(:node_manifest)[:size]
+    number_of_nodes  = :proplists.get_value(:size, :ets.info(:node_manifest))
 
     max_search      = case number_of_nodes do
       # Don't search other nodes to fill a bucket when NumberOfNodes is
       # 1, since they are never found.
       1    -> 1
-      _    -> Keyword.get(:size, :ets.info :vnode_manifest)
+      _    -> :proplists.get_value(:size, :ets.info(:vnode_manifest))
     end
     update_buckets(trunc(buckets_count - 1), node, circumference, n, max_search, [])
   end
@@ -176,9 +177,9 @@ defmodule Artifact.Hash do
   defp remove_nodes([]), do: :ok
   defp remove_nodes([node | rest]) do
     case :ets.lookup(:node_manifest, node) do
-      [ { node, info } | _ ] ->
+      [ { ^node, info } | _ ] ->
           :ets.delete(:node_manifest, node)
-          vnode_count = Keyword.get(:vnodes, info)
+          vnode_count = info[:vnodes]
           Enum.each 1..vnode_count, fn(vnode) ->
             :ets.delete(:vnodes, hash(node, vnode))
           end
@@ -192,7 +193,7 @@ defmodule Artifact.Hash do
     local_node = Config.get(:node)
     reply =
         case {nodes_to_add, nodes_to_remove -- [local_node]} do
-            {[], []} -> {:replaced_buckets, []}
+            {[], []} -> {:reorganized_buckets, []}
             _ ->
                 add_nodes(nodes_to_add)
                 remove_nodes(nodes_to_remove)
@@ -217,7 +218,7 @@ defmodule Artifact.Hash do
   """
   @spec locate_replica(nodeKey(), tuple()) :: tuple()
   def locate_replica(query, state) do
-    node = Artifact.Config.get(node)
+    node = Artifact.Config.get(:node)
     {:reply, {:nodes, nodes}, state2} = locate_nodes(query, state)
 
     {:reply, {:replica, Enum.find_index(node, nodes)}, state2}
@@ -247,14 +248,14 @@ defmodule Artifact.Hash do
   end
 
   def find_replica(key_or_bucket, state) do
-    local_node = :artifact_config.get(:node)
+    local_node = Config.get(:node)
     {:reply, {:nodes, nodes}, state2} = find_nodes(key_or_bucket, state)
     replica = Enum.find_index(nodes, &(&1==local_node))
     {:reply, {:replica, replica}, state2}
   end
 
   def find_nodes(key_or_bucket, state) do
-    bucket_count = :artifact_config.get(:bucket_count)
+    bucket_count = Config.get(:bucket_count)
     bucket       = bucket_index(key_or_bucket, bucket_count)
     [{^bucket, nodes}|_] = :ets.lookup(:buckets, bucket)
     {:reply, {:nodes, nodes}, state}
@@ -276,7 +277,7 @@ defmodule Artifact.Hash do
   end
 
   def choose_bucket_randomly(state) do
-    local_node = :artifact_config.get(:node)
+    local_node = Config.get(:node)
     buckets = inversed_buckets(local_node)
     len = length(buckets)
     case len do
@@ -294,7 +295,7 @@ defmodule Artifact.Hash do
       inversed_buckets(node, bucket - 1, buckets)
     end
   end
-  defp inversed_buckets(node), do: inversed_buckets(node, Artifact.Config.get(buckets)-1, [])
+  defp inversed_buckets(node), do: inversed_buckets(node, Artifact.Config.get(:buckets)-1, [])
 
   defp do_node_info(node, state) do
     head       = {node, :'$2'}
@@ -310,8 +311,8 @@ defmodule Artifact.Hash do
   end
 
   def node_manifest(state) do
-    node_manifest = :ets.tab2list(:node_manifest)
-    mapped_list = Enum.map(node_manifest, fn({node, _info}) ->
+    nodes = :ets.tab2list(:node_manifest)
+    mapped_list = Enum.map(nodes, fn({node, _info}) ->
       node
     end)
     {:reply, {:node_manifest, mapped_list}, state}
@@ -324,17 +325,19 @@ defmodule Artifact.Hash do
 
   def buckets_manifest(state) do
     buckets = :ets.tab2list(:buckets)
-    {:reply, {:buckets, Enum.sort(buckets)}, state}
+    {:reply, {:buckets_manifest, Enum.sort(buckets)}, state}
   end
 
   def buckets(state) do
-    node = Artifact.Config.get(node)
-    buckets = Enum.filter fn(b) ->
-      Enum.member? node, at(b, 2)
-      :ets.tab2list(:buckets)
-    end
-    buckets_new = for b <- buckets, do: at(b, 1)
-    {:reply, {:buckets, Enum.sort(buckets_new)}, state}
+    node = Artifact.Config.get(:node)
+    buckets = Enum.filter(
+      :ets.tab2list(:buckets),
+      # ets returns a list which doesn't implement the `fetch` protocol, so I
+      # use element here
+      fn(b) -> Enum.member?(:erlang.element(2, b), node) end
+    )
+    buckets = for b <- buckets, do: :erlang.element(1, b)
+    {:reply, {:buckets, Enum.sort(buckets)}, state}
   end
 
   # Callbacks
@@ -392,21 +395,17 @@ defmodule Artifact.Hash do
   end
 
   def choose_node_randomly() do
-    GenServer.call(__MODULE__, choose_node_randomly)
+    GenServer.call(__MODULE__, :choose_node_randomly)
   end
   def choose_bucket_randomly() do
-    GenServer.call(__MODULE__, choose_bucket_randomly)
+    GenServer.call(__MODULE__, :choose_bucket_randomly)
   end
 
   def node_info(), do: GenServer.call(__MODULE__, :node_info)
   def node_info(node), do: GenServer.call(__MODULE__, {:node_info, node})
-
   def node_manifest(), do: GenServer.call(__MODULE__, :node_manifest)
-
   def vnode_manifest(), do: GenServer.call(__MODULE__, :vnode_manifest)
-
   def buckets_manifest(), do: GenServer.call(__MODULE__, :buckets_manifest)
-
   def buckets(), do: GenServer.call(__MODULE__, :buckets)
 
 end
