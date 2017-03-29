@@ -35,16 +35,16 @@ defmodule ArtifactTest.Connection do
 
   def test_api_proc(api_socket) do
     receive do
-      {:tcp, api_socket, _bin} -> :gen_tcp.send(api_socket, :erlang.term_to_binary(:ok))
+      {:tcp, ^api_socket, _bin} -> :gen_tcp.send(api_socket, :erlang.term_to_binary(:ok))
     after 5000 -> false
     end
   end
 
   def test_api_send(pid) do
-    {:ok, socket} = Connection.acquire(node2, self())
+    {:ok, socket} = Connection.acquire(node2(), self())
     :ok = :gen_tcp.send(socket, :erlang.term_to_binary(:ok))
     send pid, (receive do
-      {:tcp, socket, bin} -> :erlang.binary_to_term(bin)
+      {:tcp, ^socket, bin} -> :erlang.binary_to_term(bin)
     end)
   end
 
@@ -61,11 +61,11 @@ defmodule ArtifactTest.Connection do
 
     spawn_link(__MODULE__, :test_api, [])
 
-    {:ok, socket} = Connection.acquire(node2, self())
+    {:ok, socket} = Connection.acquire(node2(), self())
     {:ok, connections} = Connection.connections()
     assert length(connections) == 1
 
-    {:ok, socket2}      = Connection.acquire(node2, self())
+    {:ok, socket2}      = Connection.acquire(node2(), self())
     {:ok, connections} = Connection.connections()
     assert length(connections) == 2
     assert socket != socket2
@@ -74,7 +74,7 @@ defmodule ArtifactTest.Connection do
     {:ok, connections} = Connection.connections()
     assert length(connections) == 2
 
-    {:ok, socket3} = Connection.acquire(node2, self(), [{:active, :true}, {:packet, 4}])
+    {:ok, socket3} = Connection.acquire(node2(), self(), [{:active, :true}, {:packet, 4}])
     # Reuse check
     #assert socket == socket3
 

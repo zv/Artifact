@@ -10,7 +10,6 @@ defmodule Artifact.Mixfile do
      start_permanent: Mix.env == :prod,
      deps: deps(),
      package: package(),
-     description: description()
     ]
   end
 
@@ -20,12 +19,12 @@ defmodule Artifact.Mixfile do
       links: %{"Github" => "https://github.com/zv/artifact"}}
   end
 
-  defp description do
-  """
-  A distributed database inspired by Chord with a wide array of features from
-  the Dynamo Paper, the XZZ Paper and more
-  """
-  end
+  # defp description do
+  # """
+  # A distributed database inspired by Chord with a wide array of features from
+  # the Dynamo Paper, the XZZ Paper and more
+  # """
+  # end
 
   # Dependencies can be Hex packages:
   #

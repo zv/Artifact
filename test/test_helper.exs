@@ -1,6 +1,5 @@
 ExUnit.start
 
-
 defmodule Artifact.TestMacros do
   defmacro node1 do
     quote do: {{127,0,0,1}, 11011}
