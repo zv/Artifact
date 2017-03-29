@@ -4,7 +4,7 @@ defmodule ArtifactTest.Connection do
   use ExUnit.Case
   alias Artifact.Config
   alias Artifact.Connection
-  import Artifact.TestMacros
+  import Artifact.TestMacros, only: :macros
 
   # setup_all do
   #   # IO.puts "Initializing Config Server..."
@@ -41,14 +41,14 @@ defmodule ArtifactTest.Connection do
   end
 
   def test_api_send(pid) do
-    {:ok, socket} = Connection.acquire(Artifact.TestMacros.node2(), self())
+    {:ok, socket} = Connection.acquire(node2, self())
     :ok = :gen_tcp.send(socket, :erlang.term_to_binary(:ok))
     send pid, (receive do
       {:tcp, socket, bin} -> :erlang.binary_to_term(bin)
     end)
   end
 
-  test "checking acquires" do
+  test "acquire/2" do
     Config.start_link([
       rpc: [port: 11011],
       max_connections: 32,
@@ -61,11 +61,11 @@ defmodule ArtifactTest.Connection do
 
     spawn_link(__MODULE__, :test_api, [])
 
-    {:ok, socket} = Connection.acquire(Artifact.TestMacros.node2(), self())
+    {:ok, socket} = Connection.acquire(node2, self())
     {:ok, connections} = Connection.connections()
     assert length(connections) == 1
 
-    {:ok, socket2}      = Connection.acquire(Artifact.TestMacros.node2(), self())
+    {:ok, socket2}      = Connection.acquire(node2, self())
     {:ok, connections} = Connection.connections()
     assert length(connections) == 2
     assert socket != socket2
@@ -74,7 +74,7 @@ defmodule ArtifactTest.Connection do
     {:ok, connections} = Connection.connections()
     assert length(connections) == 2
 
-    {:ok, socket3} = Connection.acquire(Artifact.TestMacros.node2(), self(), [{:active, :true}, {:packet, 4}])
+    {:ok, socket3} = Connection.acquire(node2, self(), [{:active, :true}, {:packet, 4}])
     # Reuse check
     #assert socket == socket3
 
