@@ -25,6 +25,7 @@ defmodule Artifact.Hash do
   """
   use Behaviour
   import Enum, only: [ at: 2 ]
+  alias Artifact.Config
 
   @typedoc "The key used to lookup a node"
   @type nodeKey :: integer | binary
@@ -50,22 +51,21 @@ defmodule Artifact.Hash do
       hashed_key
   end
 
-  @doc false
   def start_link do
     GenServer.start_link(__MODULE__, :ok, name: __MODULE__)
   end
 
-  @doc false
   def init(_args) do
+    :ets.new :buckets, [:set, :private, :named_table]
+    :ets.new :node_manifest, [:set, :private, :named_table]
+    :ets.new :vnode_manifest, [:ordered_set, :private, :named_table]
 
-    :ets.new :buckets        , [:set         , :private , :named_table]
-    :ets.new :node_manifest  , [:set         , :private , :named_table]
-    :ets.new :vnode_manifest , [:ordered_set , :private , :named_table]
+    {:node_info, local_node, info} = Config.node_info()
+    update_nodes([{local_node, info}], [], _state = [])
 
     { :ok, [] }
   end
 
-  @doc false
   def terminate(_reason, _state) do
     :ets.delete(:node_manifest)
     :ets.delete(:vnode_manifest)
@@ -83,7 +83,7 @@ defmodule Artifact.Hash do
   end
   defp bucket_members(key_hash, n, i, nodes) do
     node_hash = case :ets.next(:vnode_manifest, key_hash) do
-      "$end_of_table" -> :ets.first(:vnode_manifest)
+      :"$end_of_table" -> :ets.first(:vnode_manifest)
       other           -> other
     end
     [{_k,node} | _] = :ets.lookup(:vnode_manifest, node_hash)
@@ -107,15 +107,13 @@ defmodule Artifact.Hash do
 
   ## Fetches & writes another virtual node entry into the global vnode manifest.
   ## No locks are acquired so each manifest is node distinct .
-  defp add_nodes(nodes) when nodes == [] do
-    :ok
-  end
-  defp add_nodes([{node, info}|tail]) do
+  defp add_nodes([]), do: :ok
+  defp add_nodes([{node, info} | tail]) do
     case :ets.lookup(:node_manifest, node) do
       [ {^node, _info} | _ ] -> :ok
       [] ->
         :ets.insert(:node_manifest, {node, info})
-        vnode_count = Keyword.get(:vnodes, info)
+        vnode_count = info[:vnodes]
         Enum.each(1..vnode_count,
           &:ets.insert(:vnode_manifest, {hash(node, &1), node})
         )
@@ -143,9 +141,9 @@ defmodule Artifact.Hash do
       # Otherwise we have to insert a new bucket
       old_bucket ->
         :ets.insert(:buckets, {bucket, new_nodes})
-        new_replica = Enum.find_index(node, new_nodes)
+        new_replica = Enum.find_index(new_nodes, fn(n) -> n == node end)
         old_replica = case old_bucket do
-          [{bucket, old_nodes}] -> Enum.find_index(node, old_nodes)
+          [{bucket, old_nodes}] -> Enum.find_index(old_nodes, fn(n) -> n == node end)
           []                    -> :undefined
         end
 
@@ -161,11 +159,10 @@ defmodule Artifact.Hash do
   end
 
   defp update_buckets do
-    [node, n, buckets_count] =
-      :artifact_config.get [:node, :n, :buckets_count]
+    [node, n, buckets_count] = Config.get [:node, :n, :buckets]
 
     circumference    = ring_circumference(buckets_count)
-    number_of_nodes  = Keyword.get(:size, :ets.info :node_manifest )
+    number_of_nodes  = :ets.info(:node_manifest)[:size]
 
     max_search      = case number_of_nodes do
       # Don't search other nodes to fill a bucket when NumberOfNodes is
@@ -173,11 +170,10 @@ defmodule Artifact.Hash do
       1    -> 1
       _    -> Keyword.get(:size, :ets.info :vnode_manifest)
     end
-    update_buckets(buckets_count - 1, node, circumference, n, max_search, [])
+    update_buckets(trunc(buckets_count - 1), node, circumference, n, max_search, [])
   end
 
   defp remove_nodes([]), do: :ok
-
   defp remove_nodes([node | rest]) do
     case :ets.lookup(:node_manifest, node) do
       [ { node, info } | _ ] ->
@@ -193,7 +189,7 @@ defmodule Artifact.Hash do
 
 
   def update_nodes(nodes_to_add, nodes_to_remove, state) do
-    local_node = :artifact_config.get(:node)
+    local_node = Config.get(:node)
     reply =
         case {nodes_to_add, nodes_to_remove -- [local_node]} do
             {[], []} -> {:replaced_buckets, []}
@@ -268,9 +264,9 @@ defmodule Artifact.Hash do
     {{n1, n2, n3, n4}, port} = Artifact.Config.get(:node)
     #  Build up our condition to select our nodes out of ETS.
     # TODO: Abstract this functionality out into
-    head      = { '$1', '_' }
-    condition = [ {'=/=', '$1', { {{{n1,n2,n3,n4}}, port} } } ]
-    body      = ['$1']
+    head      = { :"$1", '_' }
+    condition = [ {'=/=', :"$1", { {{{n1,n2,n3,n4}}, port} } } ]
+    body      = [:"$1"]
     nodes     = :ets.select(:node_manifest, [{head, condition, body}])
     node_len  = length(nodes)
     case node_len do
@@ -301,15 +297,15 @@ defmodule Artifact.Hash do
   defp inversed_buckets(node), do: inversed_buckets(node, Artifact.Config.get(buckets)-1, [])
 
   defp do_node_info(node, state) do
-    head       = {node, '$2'}
+    head       = {node, :'$2'}
     conditions = []
-    body       = ['$2']
-    [info] = :ets.select(:node_manifest, [{head, conditions, body}])
+    body       = [:'$2']
+    [info]     = :ets.select(:node_manifest, [{head, conditions, body}])
     {:reply, {:node_info, node, info}, state}
   end
 
   defp do_node_info(state) do
-    node = Artifact.Config.get(node)
+    node = Artifact.Config.get(:node)
     do_node_info(node, state)
   end
 
