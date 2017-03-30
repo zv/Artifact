@@ -3,18 +3,16 @@ defmodule Artifact.Store do
     Store is simply an abstract module who derives the implementation of the
     storage at runtime.
     """
-
-  # Behaviour callbacks
+  alias Artifact.Config
 
   def start_link do
-    storage = Application.get_env(:artifact, :store) # This should return a module name like ':ets'
+    storage = Config.get(:store) # This should return the proper module that handles storage
     apply(storage, :start_link, [__MODULE__])
   end
 
   def stop, do: GenServer.call(__MODULE__, stop)
 
   ## Client API
-
   def list(bucket), do: GenServer.call(__MODULE__, {:list, bucket})
   def get(data), do: GenServer.call(__MODULE__, {:get, data})
   def match(data), do: GenServer.call(__MODULE__, {:match, data})
