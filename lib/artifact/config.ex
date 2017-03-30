@@ -12,12 +12,15 @@ defmodule Artifact.Config do
     {:ok, agent} = Agent.start_link fn -> %{} end
 
     # Load our keys into the agent
-    Enum.each(environment, fn({key, value}) ->
-      Agent.update(agent, fn map -> Map.put(map, key, process(key, environment)) end)
-    end)
-
     # TODO: hack to get the node info in there
-    Agent.update(agent, fn map -> Map.put(map, :node, process(:node, environment)) end)
+    Enum.each([{:n, nil}, {:r, nil}, {:w, nil}, {:node, nil}] ++ environment, fn({key, value}) ->
+        Agent.update(
+          agent,
+          fn map ->
+            Map.put(map, key, process(key, environment))
+          end
+        )
+    end)
 
     {:ok, %{agent: agent}}
   end
@@ -27,8 +30,6 @@ defmodule Artifact.Config do
   into Config on `init` or returns the configuration value if no special
   processing is required.
   """
-  def process(key, envs), do: envs[key]
-
   def process(:quorum, envs) do
     {n, r, w} = quorum = envs[:quorum]
 
@@ -44,6 +45,26 @@ defmodule Artifact.Config do
     quorum
   end
 
+  def process(:n, envs) do
+    case Keyword.get(envs, :quorum) do
+      nil -> 1
+      {n, _, _} -> n
+    end
+  end
+
+  def process(:r, envs) do
+    case Keyword.get(envs, :quorum) do
+      nil -> 1
+      {_ , r, _} -> r
+    end
+  end
+
+  def process(:w, envs) do
+    case Keyword.get(envs, :quorum) do
+      nil -> 1
+      {_ , _ , w} -> w
+    end
+  end
 
   def process(:buckets, envs) do
     :math.pow(2, trunc(:math.log2(envs[:buckets])))
@@ -60,6 +81,9 @@ defmodule Artifact.Config do
 
     {address, port}
   end
+
+  def process(key, envs), do: envs[key]
+
 
 
   @doc """
