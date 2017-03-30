@@ -1,26 +1,26 @@
 defmodule Artifact.RPC do
+  @behaviour Artifact.TCP
   import Record
-  @behaviour TCP
 
   Record.defrecord :data, [key: nil, bucket: nil, last_modified: nil,
                            vector_clocks: nil, checksum: nil,
                            flags: nil, value: nil]
 
   def start_link do
-    TCP.Supervisor.start_link(
-      {:local, __MODULE__},
+    [port: port, process_limit: limit] = Application.get_env(:artifact, :rpc)
+    Artifact.TCP.Server.start_link(
+      __MODULE__,
       __MODULE__,
       [],
       {[:binary, {:packet, 4}, {:active, true}, {:reuseaddr, true}],
-       port: Config.get(:rpc_port),
-       max_processes: Config.get(:rpc_max_processes)}
-    )
+       port: port,
+       max_processes: limit})
   end
 
   def stop, do: TCP.stop(__MODULE__)
-  def init(_args), do: {:ok, {}}
+  def init(_args), do: {:ok, %{}}
 
-  def handle_call(socket, data, state), do: dispatch(Config.node_info, :erlang.binary_to_term(data), state)
+  def handle_call(socket, data, state), do: dispatch("FIX NODE INFO", :erlang.binary_to_term(data), state)
 
   @type state :: any
   @typep socket :: state
@@ -91,7 +91,6 @@ defmodule Artifact.RPC do
     end
   end
 
-
   defp local?(node), do: node == Config.get(:node)
 
   def node_info(node) do
@@ -101,14 +100,12 @@ defmodule Artifact.RPC do
     end
   end
 
-
   def node_list(node) do
     case local?(node) do
       true -> Hash.node_list()
       _    -> request(node, :node_list)
     end
   end
-
 
   def list(node, bucket) do
     case local?(node) do
@@ -117,14 +114,12 @@ defmodule Artifact.RPC do
     end
   end
 
-
   def get(node, data) do
     case local?(node) do
       true -> Store.get(data)
       _    -> request(node, {:get, data})
     end
   end
-
 
   def put(node, data) do
     case local?(node) do
@@ -133,7 +128,6 @@ defmodule Artifact.RPC do
     end
   end
 
-
   def delete(node, data) do
     case local?(node) do
       true -> Store.delete(data)
@@ -141,11 +135,11 @@ defmodule Artifact.RPC do
     end
   end
 
-
   def check_node(node, node2) do
-    case local?(node) do
-      true -> Membership.check_node(node2)
-      _    -> request(node, {:check_node, node2})
+    if local?(node) do
+      Membership.check_node(node2)
+    else
+      request(node, {:check_node, node2})
     end
   end
 

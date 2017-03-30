@@ -11,7 +11,8 @@ defmodule Artifact do
 
   This is the main module in the Artifact repository.
   """
-  use Behaviour
+  use Application
+
   require Record
 
   @typedoc """

@@ -7,10 +7,8 @@ defmodule Artifact.Store do
   # Behaviour callbacks
 
   def start_link do
-    # TODO: defmacro this block
-    storage = Application.get_env(:store)
-    module = "Artifact" <> "." <> to_string(__MODULE__) <> "." <> storage
-    apply(module, :start_link, [__MODULE__])
+    storage = Application.get_env(:artifact, :store) # This should return a module name like ':ets'
+    apply(storage, :start_link, [__MODULE__])
   end
 
   def stop, do: GenServer.call(__MODULE__, stop)
@@ -24,5 +22,4 @@ defmodule Artifact.Store do
   def delete(data), do: GenServer.call(__MODULE__, {:delete, data})
   def info(name), do: GenServer.call(__MODULE__, {:info, name})
   def bucket(name), do: GenServer.call(__MODULE__, {:bucket, name})
-
 end

@@ -9,7 +9,16 @@ defmodule Artifact.Sync do
   alias Artifact.RPC
 
   def start_link() do
-    :gen_fsm.start_link({:local, __MODULE__}, __MODULE__, [], _opts = [])
+    :gen_fsm.start_link(__MODULE__, :ok, [])
+  end
+
+  def init(_args) do
+    interval = Config.get(:interval)
+    node = Config.get(:node)
+    {:ok, :read, [
+        node: node,
+        interval: interval
+     ], interval}
   end
 
   def terminate(_reason, _statename, _state_data), do: :ok

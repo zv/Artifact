@@ -4,12 +4,12 @@ defmodule Artifact.Logging do
   excellent `lager` module, and to support setting up interfaces to emit
   structured data to external consumers of messages logged inside Artifact (for
   example to provide a distributed 'health' GUI or syslogd service simply by
-  recieving logs over a socket). 
+  recieving logs over a socket).
   """
   use GenServer
 
   def init(_args) do
-    case Artifact.Config.get(:logging) do
+    case Application.get_env(:artifact, :logfile) do
       nil     -> { :ok, [] }
       logfile ->
         case File.open(logfile, [:write, :append]) do

@@ -16,6 +16,6 @@ defmodule Artifact.Supervisor do
       worker(Artifact.RPC, []),
       worker(Artifact.Memcache, [[name: Memcache]])
     ]
-    supervise(tree, strategy: :one_for_all)
+    supervise(tree, strategy: :one_for_one)
   end
 end

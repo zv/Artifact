@@ -7,16 +7,16 @@ defmodule Artifact.TCP.Acceptor do
   end
 
   def init(socket, state, monitor_name, module, option) do
-    TCP.Monitor.register(monitor_name, self)
+    Artifact.TCP.Monitor.register(monitor_name, self)
     accept(socket, state, monitor_name, module, option)
   end
 
   def accept(socket, state, monitor_name, module, option) do
     case :gen_tcp.accept(socket, option.accept_timeout) do
       {:ok, listen_socket} ->
-        TCP.Monitor.increment(monitor_name, self)
+        Artifact.TCP.Monitor.increment(monitor_name, self)
         recv(:proplists.get_value(:active, option.listen), listen_socket, state, module, option)
-        TCP.Monitor.decrement(monitor_name, self)
+        Artifact.TCP.Monitor.decrement(monitor_name, self)
         :gen_tcp.close(listen_socket)
       {:error, msg} ->
         Artifact.Logging.warning("accept #{inspect module} msg: #{inspect msg}")

@@ -345,24 +345,28 @@ defmodule Artifact.Hash do
   def handle_call(:stop, _from, state) do
     {:stop, :normal, :stopped, state}
   end
+
   def handle_call({:update_nodes, nodes_added, nodes_removed}, _from, state) do
     update_nodes(nodes_added, nodes_removed, state)
   end
+
   def handle_call({:find_bucket, key_or_bucket}, _from, state) do
     find_bucket(key_or_bucket, state)
   end
+
   def handle_call({:find_replica, key_or_bucket}, _from, state) do
     find_replica(key_or_bucket, state);
   end
+
   def handle_call({:find_nodes, key_or_bucket}, _from, state) do
     find_nodes(key_or_bucket, state)
   end
+
   def handle_call(:choose_node_randomly, _from, state) do
     choose_node_randomly(state)
   end
-  def handle_call(:choose_bucket_randomly, _from, state) do
-    choose_bucket_randomly(state)
-  end
+
+  def handle_call(:choose_bucket_randomly, _, state), do: choose_bucket_randomly(state)
   def handle_call({:node_info, node}, _from, state), do: do_node_info(node, state)
   def handle_call(:node_info, _from, state), do: do_node_info(state)
   def handle_call(:node_manifest, _from, state), do: node_manifest(state)

@@ -11,17 +11,17 @@ defmodule Artifact.TCP.Server do
     start_link(module, args, Application.get_env(:artifact, TCP))
   end
   def start_link(module, args, option) do
-    start_link({:local, __MODULE__}, module, args, option)
+    start_link(module, args, option)
   end
   def start_link(name, module, args, option) do
-    TCP.Supervisor.start_link(name, module, args, option)
+    Artifact.TCP.Supervisor.start_link(name, module, args, option)
   end
 
   def stop, do: stop(__MODULE__)
-  def stop(module), do: TCP.Supervisor.stop(module)
+  def stop(module), do: Artifact.TCP.Supervisor.stop(module)
 
   def info(key), do: info(__MODULE__, key)
   def info(name, key) do
-    TCP.Monitor.info(TCP.Supervisor.build_monitor_name(name), key)
+    Artifact.TCP.Monitor.info(Artifact.TCP.Supervisor.build_monitor_name(name), key)
   end
 end
