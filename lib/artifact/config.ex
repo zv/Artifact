@@ -85,7 +85,6 @@ defmodule Artifact.Config do
   def process(key, envs), do: envs[key]
 
 
-
   @doc """
   Fetches a configuration parameter from the agent process or ETS.
 

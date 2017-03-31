@@ -2,7 +2,7 @@ defmodule Artifact.Store.ETS do
   require Artifact
   require Record
 
-  def start_link(server), do: GenServer.start_link(__MODULE__, :ok, name: __MODULE__)
+  def start_link(server), do: GenServer.start_link(__MODULE__, [], name: server)
 
   def init(_args) do
     :ets.new(__MODULE__, [:set, :private, :named_table, {:keypos, 2}])
@@ -18,7 +18,7 @@ defmodule Artifact.Store.ETS do
   List the documents stored in a particular bucket
   """
   defp do_list(bucket, state) do
-    head = Aritfact.data(
+    head = Artifact.data(
       key: :'$1',
       bucket: bucket,
       last_modified: :'$2',
@@ -50,7 +50,7 @@ defmodule Artifact.Store.ETS do
   defp do_get(datum, state) do
     key = Artifact.data(datum, :key)
     case :ets.lookup(__MODULE__, key) do
-      [^datum] -> {:reply, datum, state}
+      [datum] -> {:reply, datum, state}
       _ -> {:reply, :undefined, state}
     end
   end
@@ -61,7 +61,7 @@ defmodule Artifact.Store.ETS do
   defp do_match(datum, state) do
     key = Artifact.data(datum, :key)
     case :ets.match(__MODULE__, key) do
-      [^datum] -> {:reply, datum, state}
+      [datum] -> {:reply, datum, state}
       _ -> {:reply, :undefined, state}
     end
   end
@@ -97,7 +97,7 @@ defmodule Artifact.Store.ETS do
   defp do_delete(datum, state) do
     key = Artifact.data(datum, :key)
     case :ets.lookup(__MODULE__, key) do
-      [^datum] ->
+      [datum] ->
         :ets.delete(__MODULE__, key)
         {:reply, :ok, state}
       _ -> {:reply, :undefined, state}
