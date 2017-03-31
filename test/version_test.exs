@@ -54,4 +54,14 @@ defmodule ArtifactTest.Version do
                               Artifact.data(datum2, :vector_clocks)))
   end
 
+  defp set_bits(n), do: List.duplicate(255, n)
+  defp cleared_bits(n), do: List.duplicate(0, n)
+
+  test "check merge_checksum (packing)" do
+    datum = Artifact.data(checksum: :erlang.list_to_binary(set_bits(16)))
+    {:ok, checksum} = Version.merge_clocks([datum])
+    expected = :erlang.list_to_binary([<<1::4, 15::4>>, set_bits(7)])
+    assert expected == checksum
+  end
+
 end

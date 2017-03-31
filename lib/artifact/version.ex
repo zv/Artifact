@@ -53,16 +53,18 @@ defmodule Artifact.Version do
     length = length(lst)
     bits = trunc(60/length)
     rest_bits = 128 - bits
-    lst = Enum.map lst, fn(dt) ->
+    nlst = Enum.map(lst, fn(dt) ->
       <<checksum::size(bits), _::size(rest_bits)>> = Artifact.data(dt, :checksum)
       checksum
-    end
-    merge_clocks(lst, bits, length, 4)
+    end)
+    merge_clocks(nlst, bits, length, 4)
   end
+
   def merge_clocks([], _bits, result, result_bits) do
     padding = @cas_bits - result_bits
     { :ok, <<result::size(result_bits), 0::size(padding)>> }
   end
+
   def merge_clocks([checksum | rest], bits, result, result_bits) do
     result_bits = result_bits + bits
     # pack our checksums
