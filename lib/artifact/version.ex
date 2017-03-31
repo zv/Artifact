@@ -1,19 +1,20 @@
 defmodule Artifact.Version do
   @cas_bits 64
+  require Artifact
   alias Artifact.Config
 
   def start_link() do
-    GenServer.start_link(__MODULE__, __MODULE__, [], name: __MODULE__)
+    GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
   def init(_args), do: {:ok, []}
   def terminate(_reason, _state), do: :ok
 
   def update(datum, state) do
-    next_vclock = :vclock.increment(Config.get(:node), data(datum, :vector_clocks))
+    next_vclock = :vclock.increment(Config.get(:node), Artifact.data(datum, :vector_clocks))
     {:reply,
      {:ok,
-      data(last_modified: :erlang.now(), vector_clocks: next_vclock), state}}
+      Artifact.data(last_modified: :erlang.now(), vector_clocks: next_vclock)}, state}
   end
 
   # Take a list of events and order them into a unique list by removing any that
@@ -21,9 +22,9 @@ defmodule Artifact.Version do
   defp do_order([], []), do: :undefined
   defp do_order([], lst), do: lst
   defp do_order([datum|rest], lst) do
-    vclock = data(datum, :vector_clocks)
+    vclock = Artifact.data(datum, :vector_clocks)
     comparator = fn(n_vclock) ->
-      :vclock.descends(data(other, :vector_clocks), vclock)
+      :vclock.descends(Artifact.data(n_vclock, :vector_clocks), vclock)
     end
 
     if Enum.any?(rest, comparator) do
@@ -42,7 +43,7 @@ defmodule Artifact.Version do
   elements checksums into a single value.
   """
   def merge_clocks(lst) when length(lst) > 15 do
-    {:error, IO.puts("merge_clocks/1 (lst is too long) #{inspect length(lst)}") }
+    {:error, "merge_clocks/1 (lst is too long) #{inspect length(lst)}" }
   end
   def merge_clocks(lst) do
     # The actual packing of data is as follows:
@@ -52,21 +53,23 @@ defmodule Artifact.Version do
     length = length(lst)
     bits = trunc(60/length)
     rest_bits = 128 - bits
-    lst = Enum.map lst, fn(dt) ->
-      <<checksum:bits, _:rest>> = data(dt, :checksum)
+    nlst = Enum.map(lst, fn(dt) ->
+      <<checksum::size(bits), _::size(rest_bits)>> = Artifact.data(dt, :checksum)
       checksum
-    end
-    merge_clocks(lst, bits, length, 4)
+    end)
+    merge_clocks(nlst, bits, length, 4)
   end
+
   def merge_clocks([], _bits, result, result_bits) do
     padding = @cas_bits - result_bits
-    { :ok, <<result:result_bits, 0:padding>> }
+    { :ok, <<result::size(result_bits), 0::size(padding)>> }
   end
+
   def merge_clocks([checksum | rest], bits, result, result_bits) do
-    result_bits = result_bits + each_bits
+    result_bits2 = result_bits + bits
     # pack our checksums
-    <<result:result_bits>> = <<result:result_bits, checksum:bits>>
-    merge_clocks(rest, bits, result, result_bits)
+    <<result2::size(result_bits2)>> = <<result::size(result_bits), checksum::size(bits)>>
+    merge_clocks(rest, bits, result2, result_bits2)
   end
 
   ## Callbacks

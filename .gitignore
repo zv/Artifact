@@ -4,3 +4,11 @@
 erl_crash.dump
 *.ez
 covlist
+
+artifact.log
+
+vclock/.rebar3
+vclock/ebin
+vclock/rebar3.crashdump
+
+NOTES
