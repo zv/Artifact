@@ -64,4 +64,29 @@ defmodule ArtifactTest.Version do
     assert expected == checksum
   end
 
+  test "check merge_checksum (uniqueness)" do
+    datum1 = Artifact.data(checksum: <<18446744073709551615::64, 0::64>>)
+    datum2 = Artifact.data(checksum: <<0::64, 18446744073709551615::64>>)
+    {:ok, merge} = Version.merge_clocks([datum1, datum2])
+    expected = <<2::4, 15::4, 268435455::26, 0::30>>
+    assert expected == merge
+  end
+
+  test "check merge_checksum(7)" do
+    lst = Enum.map(1..7, fn(n) ->
+      Artifact.data(checksum: <<n::8, 0::120>>)
+    end)
+    {:ok, merge} = Version.merge_clocks(lst)
+    expected = <<7::4, 1::8, 2::8, 3::8, 4::8, 5::8, 6::8, 7::8, 0::4>>
+    assert expected == merge
+  end
+
+  test "check merge_checksum(error)" do
+    lst = Enum.map(1..16, fn(n) ->
+      Artifact.data(checksum: <<n::4, 0::60>>)
+    end)
+    {:error, reason} = Version.merge_clocks(lst)
+    assert String.contains? reason, "16"
+  end
+
 end

@@ -43,7 +43,7 @@ defmodule Artifact.Version do
   elements checksums into a single value.
   """
   def merge_clocks(lst) when length(lst) > 15 do
-    {:error, IO.puts("merge_clocks/1 (lst is too long) #{inspect length(lst)}") }
+    {:error, "merge_clocks/1 (lst is too long) #{inspect length(lst)}" }
   end
   def merge_clocks(lst) do
     # The actual packing of data is as follows:
@@ -66,10 +66,10 @@ defmodule Artifact.Version do
   end
 
   def merge_clocks([checksum | rest], bits, result, result_bits) do
-    result_bits = result_bits + bits
+    result_bits2 = result_bits + bits
     # pack our checksums
-    <<result::size(result_bits)>> = <<result::size(result_bits), checksum::size(bits)>>
-    merge_clocks(rest, bits, result, result_bits)
+    <<result2::size(result_bits2)>> = <<result::size(result_bits), checksum::size(bits)>>
+    merge_clocks(rest, bits, result2, result_bits2)
   end
 
   ## Callbacks
