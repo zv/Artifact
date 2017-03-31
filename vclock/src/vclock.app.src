@@ -1,0 +1,11 @@
+{application, 'vclock',
+ [{description, "A pure Erlang VClock implementation"},
+  {vsn, "1.0.0"},
+  {registered, []},
+  {applications,
+   [kernel,
+    stdlib
+   ]},
+  {env,[]},
+  {modules, []}
+ ]}.

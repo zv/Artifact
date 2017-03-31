@@ -36,6 +36,7 @@ defmodule Artifact.Mixfile do
   #
   # Type "mix help deps" for more examples and options
   defp deps do
-    []
+    [{:vclock, path: "vclock/"}]
   end
 end
+
