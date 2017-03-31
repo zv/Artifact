@@ -1,4 +1,5 @@
 defmodule Artifact.Store.ETS do
+  require Artifact
   require Record
 
   def start_link(server), do: GenServer.start_link(__MODULE__, :ok, name: __MODULE__)
@@ -17,7 +18,7 @@ defmodule Artifact.Store.ETS do
   List the documents stored in a particular bucket
   """
   defp do_list(bucket, state) do
-    head = data(
+    head = Aritfact.data(
       key: :'$1',
       bucket: bucket,
       last_modified: :'$2',
@@ -29,7 +30,7 @@ defmodule Artifact.Store.ETS do
 
     condition = []
 
-    body = data(
+    body = Artifact.data(
       key: :'$1',
       bucket: bucket,
       last_modified: :'$2',
@@ -47,7 +48,7 @@ defmodule Artifact.Store.ETS do
   Fetch a document by key
   """
   defp do_get(datum, state) do
-    key = data(datum, :key)
+    key = Artifact.data(datum, :key)
     case :ets.lookup(__MODULE__, key) do
       [^datum] -> {:reply, datum, state}
       _ -> {:reply, :undefined, state}
@@ -58,9 +59,9 @@ defmodule Artifact.Store.ETS do
   Match a document by key
   """
   defp do_match(datum, state) do
-    key = data(datum, :key)
+    key = Artifact.data(datum, :key)
     case :ets.match(__MODULE__, key) do
-      [^data] -> {:reply, datum, state}
+      [^datum] -> {:reply, datum, state}
       _ -> {:reply, :undefined, state}
     end
   end
@@ -69,9 +70,9 @@ defmodule Artifact.Store.ETS do
   Insert a document
   """
   defp do_put(datum, state) when Record.is_record(datum, :data) do
-    case :ets.lookup(__MODULE__, data(datum, :key)) do
+    case :ets.lookup(__MODULE__, Artifact.data(datum, :key)) do
       [stored] ->
-        if :vclock.descends(data(datum, :vector_clocks), data(stored, :vector_clocks)) do
+        if :vclock.descends(Artifact.data(datum, :vector_clocks), Artifact.data(stored, :vector_clocks)) do
           insert_datum(datum, state)
         else
             {:reply,
@@ -94,9 +95,9 @@ defmodule Artifact.Store.ETS do
   Delete a document
   """
   defp do_delete(datum, state) do
-    key = data(datum, :key)
+    key = Artifact.data(datum, :key)
     case :ets.lookup(__MODULE__, key) do
-      [data] ->
+      [^datum] ->
         :ets.delete(__MODULE__, key)
         {:reply, :ok, state}
       _ -> {:reply, :undefined, state}
