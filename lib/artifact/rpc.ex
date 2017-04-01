@@ -1,60 +1,26 @@
 defmodule Artifact.RPC do
-  @behaviour Artifact.TCP
-  require Logger
-  require Record
-  @timeout 500
+  alias Artifact.Config
+  alias Artifact.Connection
+  alias Artifact.Store
 
-  alias Artifact.{Config, Hash, Store, Membership, Coordinator, Connection}
-
-  def start_link do
+  def start_link() do
     [port: port, process_limit: limit] = Config.get(:rpc)
-    Artifact.TCP.start_link(
-      __MODULE__,
-      __MODULE__,
-      [],
-      [listen: [:binary, {:packet, 4}, {:active, true}, {:reuseaddr, true}],
-       port: port,
-       max_processes: limit,
-       shutdown: 2000
-      ])
+    options = Artifact.TCP.server_options([
+      listen: [:binary,
+               {:packet, 4},
+               {:active, true},
+               {:reuseaddr, true}],
+      port: port,
+      max_processes: limit,
+      shutdown: 2000
+    ])
+
+    opts = [port: port]
+
+    {:ok, _} = :ranch.start_listener(:artifact, 100, :ranch_tcp, opts, Artifact.RPC.Acceptor, [])
   end
 
-  def stop, do: Artifact.TCP.stop(__MODULE__)
-  def init(_args) do
-    {:ok, {}}
-  end
 
-  def handle_call(socket, data, state), do: dispatch("FIX NODE INFO", :erlang.binary_to_term(data), state)
-
-  @type state :: any
-  @typep socket :: state
-  # @spec dispatch(state,
-  #                :node_info |
-  #                :node_list |
-  #                { :list, node } |
-  #                { :get, record(:data) } |
-  #                { :delete, record(:data) } |
-  #                { :check_node, node } |
-  #                { :route, any } |
-  #                { :put, any } |
-  #                term,
-  #                state) :: reply
-  @doc """
-  Dispatch a procedure call based on the request type encoded in the term
-  """
-  defp dispatch(_socket, :node_info, state), do: reply(Config.node_info(), state)
-  defp dispatch(_socket, :node_list, state), do: reply(Hash.node_list(), state)
-  defp dispatch(_socket, {:list, bucket}, state), do: reply(Store.list(bucket), state)
-  defp dispatch(_socket, {:get, data}, state), do: reply(Store.get(data), state)
-  defp dispatch(_socket, {:delete, data}, state), do: reply(Store.delete(data), state)
-  defp dispatch(_socket, {:check_node, node}, state), do: reply(Membership.check_node(node), state)
-  defp dispatch(_socket, {:route, req}, state), do: reply(Coordinator.route(req), state)
-  defp dispatch(_socket, _, state), do: reply({:error, :enotsup}, state)
-  defp dispatch(_socket, {:put, data}, state) when Record.is_record(data, :data) do
-    reply(Store.put(data), state)
-  end
-
-  defp reply(data, state), do: {:reply, :erlang.term_to_binary(data), state}
 
   defp recv_response(socket) do
     receive do
@@ -67,7 +33,7 @@ defmodule Artifact.RPC do
   end
 
   defp do_request(node, message) do
-    case Connection.lease(node, self()) do
+    case Connection.acquire(node, self()) do
       {:ok, socket} ->
         case :gen_tcp.send(socket, :erlang.term_to_binary(message)) do
           :ok -> case recv_response(socket) do
@@ -86,37 +52,18 @@ defmodule Artifact.RPC do
     end
   end
 
+
   defp request(node, message) do
     case do_request(node, message) do
       {:ok, result}    -> result
       {:error, reason} ->
-        # Logger.warn "request(#{inspect node}, #{inspect message}): #{inspect reason}"
-        {:error, reason}
+      # Logger.warn "request(#{inspect node}, #{inspect message}): #{inspect reason}"
+      {:error, reason}
     end
   end
+
 
   defp local?(node), do: node == Config.get(:node)
-
-  def node_info(node) do
-    case local?(node) do
-      true -> Config.node_info()
-      _    -> request(node, :node_info)
-    end
-  end
-
-  def node_list(node) do
-    case local?(node) do
-      true -> Hash.node_list()
-      _    -> request(node, :node_list)
-    end
-  end
-
-  def list(node, bucket) do
-    case local?(node) do
-      true -> Store.list(bucket)
-      _    -> request(node, {:list, bucket})
-    end
-  end
 
   def get(node, data) do
     case local?(node) do
@@ -125,34 +72,67 @@ defmodule Artifact.RPC do
     end
   end
 
-  def put(node, data) do
-    case local?(node) do
-      true -> Store.put(data)
-      _    -> request(node, {:put, data})
+
+end
+
+defmodule Artifact.RPC.Acceptor do
+  alias Artifact.{Config, Hash, Store, Membership, Coordinator, Connection}
+
+  def start_link(ref, socket, transport, opts) do
+    pid = spawn_link(__MODULE__, :init, [ref, socket, transport, opts])
+    {:ok, pid}
+  end
+
+  def init(ref, socket, transport, opts) do
+    :ok = :ranch.accept_ack(ref)
+
+    IO.puts("RPC client connected")
+
+    state = %{
+      socket: socket,
+      transport: transport,
+      server_opts: opts
+    }
+
+    listen(state)
+  end
+
+  def listen(state) do
+    case recv(state) do
+      {:reply, to_send, state} ->
+        IO.puts("got back response")
+        state.transport.send(to_send)
+        listen(state)
+      {:noreply, state} -> listen(state)
+      :closed ->
+        IO.puts("socket closed")
+        :ok
     end
   end
 
-  def delete(node, data) do
-    case local?(node) do
-      true -> Store.delete(data)
-      _    -> request(node, {:delete, data})
+  def recv(state) do
+    case state.transport.recv(state.socket,
+          state.opts.recv_length,
+          state.opts.recv_timeout) do
+      {:ok, header} ->
+        do_dispatch(header, state)
+      _ ->
+        :ok = state.transport.close(state.socket)
+        :closed
     end
   end
 
-  def check_node(node, node2) do
-    if local?(node) do
-      Membership.check_node(node2)
-    else
-      request(node, {:check_node, node2})
-    end
+  defp reply(datum, state), do: {:reply,
+                                 {:erlang.term_to_binary(datum), state}}
+
+  defp do_dispatch(payload, state) do
+    dispatch(state, :erlang.binary_to_term(payload))
   end
 
-
-  def route(node, request) do
-    case local?(node) do
-      true ->  {:error, :ewouldblock}
-      _    ->  request(node, {:route, request})
-    end
+  def dispatch({:get, datum}, state) do
+    reply(
+      Artifact.Store.get(datum), state
+    )
   end
 
 end

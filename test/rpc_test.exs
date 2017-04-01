@@ -2,6 +2,7 @@ Code.require_file "test_helper.exs", __DIR__
 
 defmodule ArtifactTest.RPC do
   use ExUnit.Case
+  require Artifact
   alias Artifact.Config
   alias Artifact.Hash
   alias Artifact.Store
@@ -29,7 +30,7 @@ defmodule ArtifactTest.RPC do
     Hash.start_link()
     Store.start_link()
     Connection.start_link()
-    Artifact.RPC.start_link()
+    RPC.start_link()
 
     # Wait for RPC to start
     :timer.sleep(100)
@@ -38,8 +39,8 @@ defmodule ArtifactTest.RPC do
   end
 
   test "global rpc_test" do
-    thing = RPC.node_info(node1())
-    IO.puts(inspect(thing))
+    # thing = RPC.node_info(node1())
+    result = RPC.get(node1(), Artifact.data(key: "item-1", bucket: 3))
   end
 
 end
