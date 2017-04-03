@@ -17,10 +17,14 @@ defmodule Artifact.RPC do
 
     opts = [port: port]
 
-    {:ok, _} = :ranch.start_listener(:artifact, 100, :ranch_tcp, opts, Artifact.RPC.Acceptor, [])
+    {:ok, _} = :ranch.start_listener(
+      :artifact,             # Application
+      limit,                 # Number of spawned acceptors
+      :ranch_tcp,            # Type
+      opts,                  # Socket options
+      Artifact.RPC.Acceptor, # Pool module
+      [])                    # Arguments
   end
-
-
 
   defp recv_response(socket) do
     receive do
@@ -62,7 +66,6 @@ defmodule Artifact.RPC do
     end
   end
 
-
   defp local?(node), do: node == Config.get(:node)
 
   def get(node, data) do
@@ -72,10 +75,74 @@ defmodule Artifact.RPC do
     end
   end
 
+  def node_info(node) do
+    if local?(node) do
+      Config.node_info()
+    else
+      request(node, :node_info)
+    end
+  end
+
+  def node_list(node) do
+    if local?(node) do
+      Hash.node_list()
+    else
+      request(node, :node_list)
+    end
+  end
+
+  def list(node, bucket) do
+    if local?(node) do
+      Store.list(bucket)
+    else
+      request(node, {:list, bucket})
+    end
+  end
+
+  def get(node, data) do
+    if local?(node) do
+      Store.get(data)
+    else
+      request(node, {:get, data})
+    end
+  end
+
+  def put(node, data) do
+    if local?(node) do
+      Store.put(data)
+    else
+      request(node, {:put, data})
+    end
+  end
+
+  def delete(node, data) do
+    if local?(node) do
+      Store.delete(data)
+    else
+      request(node, {:delete, data})
+    end
+  end
+
+  def check_node(node, node2) do
+    if local?(node) do
+      Membership.check_node(node2)
+    else
+      request(node, {:check_node, node2})
+    end
+  end
+
+  def route(node, request) do
+    if local?(node) do
+       {:error, :ewouldblock}
+    else
+       request(node, {:route, request})
+    end
+  end
 
 end
 
 defmodule Artifact.RPC.Acceptor do
+  require Record
   alias Artifact.{Config, Hash, Store, Membership, Coordinator, Connection}
 
   def start_link(ref, socket, transport, opts) do
@@ -129,10 +196,17 @@ defmodule Artifact.RPC.Acceptor do
     dispatch(state, :erlang.binary_to_term(payload))
   end
 
-  def dispatch({:get, datum}, state) do
-    reply(
-      Artifact.Store.get(datum), state
-    )
+  defp dispatch({:get, datum}, state), do: reply(Artifact.Store.get(datum), state)
+  defp dispatch(:node_info, state), do: reply(Config.node_info(), state)
+  defp dispatch(:node_list, state), do: reply(Hash.node_list(), state)
+  defp dispatch({:list, bucket}, state), do: reply(Store.list(bucket), state)
+  defp dispatch({:get, datum}, state), do: reply(Store.get(datum), state)
+  defp dispatch({:delete, datum}, state), do: reply(Store.delete(datum), state)
+  defp dispatch({:check_node, node}, state), do: reply(Membership.check_node(node), state)
+  defp dispatch({:route, req}, state), do: reply(Coordinator.route(req), state)
+  defp dispatch({:put, datum}, state) when Record.is_record(datum, :datum) do
+    reply(Store.put(datum), state)
   end
+  defp dispatch(_, state), do: reply({:error, :enotsup}, state)
 
 end
