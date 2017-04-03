@@ -1,11 +1,12 @@
 defmodule Artifact.RPC do
+  import Artifact, only: [server_options: 1]
   alias Artifact.Config
   alias Artifact.Connection
   alias Artifact.Store
 
   def start_link() do
     [port: port, process_limit: limit] = Config.get(:rpc)
-    options = Artifact.TCP.server_options([
+    options = Artifact.server_options([
       listen: [:binary,
                {:packet, 4},
                {:active, true},

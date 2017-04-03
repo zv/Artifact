@@ -37,4 +37,12 @@ defmodule Artifact do
                            vector_clocks: nil, checksum: nil, flags: nil, value: nil]
 
   def start(_type , _args), do: Artifact.Supervisor.start_link()
+
+  @doc """
+  Fetches the Mix configuration values for our TCP services and optionally
+  merges them with a custom set of changes
+  """
+  def server_options(merge \\ []) do
+    Keyword.merge(Application.get_env(:artifact, TCP), merge)
+  end
 end
