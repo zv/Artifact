@@ -45,6 +45,8 @@ config :artifact,
 
   timer: 1000,
 
+  version: "Artifact/0.3 [elixir]",
+
   # hash_function provides the module and name of the hash function whose
   # output of a piece of data's signature is used to determine it's
   # position on the 'hash ring', a circular structure mapping the valid

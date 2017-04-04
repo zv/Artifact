@@ -1,4 +1,7 @@
 defmodule Artifact.Memcache do
+
+  # ERROR - must add 'current_connections'
+
   import Artifact, only: [server_options: 1]
   alias Artifact.Config
 
@@ -103,13 +106,13 @@ defmodule Artifact.Memcache.Acceptor do
   end
   defp do_set(["set", key, flags, "0", bytes], state) do
     case state.transport.recv(state.socket, List.to_integer(bytes), @timeout) do
-      {:ok, header} ->
+      {:ok, value} ->
         state.transport.recv(state.socket, 2, @timeout)
-        case Coordinator.route(:put, Artifact.data(key: key, flags: flags, value: header)) do
+        case Coordinator.route(:put, Artifact.data(key: key, flags: flags, value: value)) do
           :ok ->
             state.transport.send(<<"STORED\r\n">>)
             Statistics.increment(:cmd_set)
-            Statistics.increment(:bytes_written, Artifact.data(value: header))
+            Statistics.increment(:bytes_written, value)
             {:noreply, state}
           _else -> reply_error("Write failure", state)
         end
